@@ -94,24 +94,24 @@ static const HyjalWave aHyjalWavesAlliance[] =
 {
     // Rage Winterchill Wave 1-8
     {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_NECRO, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_NECRO, NPC_CRYPT, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 140000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_CRYPT, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_NECRO, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_NECRO, NPC_CRYPT, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 140000, false},
     // All 8 Waves are summoned, summon Rage Winterchill, next few waves are for Anetheron
     {{NPC_WINTERCHILL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, true},
     // Anetheron Wave 1-8
     {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
     {{NPC_GHOUL, NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_ABOMI, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
     {{NPC_GHOUL, NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_BANSH, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_BANSH, NPC_BANSH, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_ABOMI, NPC_BANSH, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
-	{{NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_BANSH, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 140000, false},
+    {{NPC_CRYPT, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_BANSH, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_BANSH, NPC_BANSH, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_CRYPT, NPC_ABOMI, NPC_BANSH, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 125000, false},
+    {{NPC_GHOUL, NPC_GHOUL, NPC_ABOMI, NPC_BANSH, NPC_CRYPT, NPC_NECRO, NPC_NECRO, NPC_NECRO, NPC_NECRO, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 140000, false},
     // All 8 Waves are summoned, summon Anatheron
     {{NPC_ANETHERON, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, true}
 };
