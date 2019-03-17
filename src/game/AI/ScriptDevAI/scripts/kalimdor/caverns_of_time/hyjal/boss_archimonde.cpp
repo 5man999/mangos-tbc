@@ -211,7 +211,6 @@ struct boss_archimondeAI : public ScriptedAI
     void UpdateAI(const uint32 uiDiff) override
     {
         
-	float m_fAngle;
         // Intro timer
         if (m_uiDrainNordrassilTimer)
         {
@@ -269,6 +268,7 @@ struct boss_archimondeAI : public ScriptedAI
 
                 if (m_uiSummonWispTimer < uiDiff)
                 {
+		    float m_fAngle;	
                     float fX, fY, fZ;
 		    m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 30.0f, m_fAngle + frand(0, M_PI_F * .5));
                     m_creature->SummonCreature(NPC_ANCIENT_WISP, fX, fY, fZ, 0, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000);
