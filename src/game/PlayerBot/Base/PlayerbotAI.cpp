@@ -1906,9 +1906,19 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
             return;
         }
 
+        // If master dismounted, do so
+        case SMSG_DISMOUNT:
+        {
+            if (!GetMaster()->IsMounted() && m_bot->IsMounted())    // only execute code if master is the one who dismounted
+            {
+                WorldPacket emptyPacket;
+                m_bot->GetSession()->HandleCancelMountAuraOpcode(emptyPacket);  //updated code
+            }
+            return;
+        }
         // if a change in speed was detected for the master
         // make sure we have the same mount status
-        case SMSG_FORCE_RUN_SPEED_CHANGE:
+        case SMSG_SPLINE_SET_RUN_SPEED:
         {
             WorldPacket p(packet);
             ObjectGuid guid;
@@ -1918,7 +1928,7 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                 return;
             if (GetMaster()->IsMounted() && !m_bot->IsMounted())
             {
-                //Player Part
+                // Player Part
                 if (!GetMaster()->GetAurasByType(SPELL_AURA_MOUNTED).empty())
                 {
                     int32 master_speed1 = 0;
@@ -1926,7 +1936,8 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                     master_speed1 = GetMaster()->GetAurasByType(SPELL_AURA_MOUNTED).front()->GetSpellProto()->EffectBasePoints[1];
                     master_speed2 = GetMaster()->GetAurasByType(SPELL_AURA_MOUNTED).front()->GetSpellProto()->EffectBasePoints[2];
 
-                    //Bot Part
+                    // Bot Part
+                    // Step 1: find spell in bot spellbook that matches the speed change from master
                     uint32 spellMount = 0;
                     for (PlayerSpellMap::iterator itr = m_bot->GetSpellMap().begin(); itr != m_bot->GetSpellMap().end(); ++itr)
                     {
@@ -1955,13 +1966,22 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                                 }
                         }
                     }
-                    if (spellMount > 0) m_bot->CastSpell(m_bot, spellMount, TRIGGERED_NONE);
+                    if (spellMount > 0 && m_bot->CastSpell(m_bot, spellMount, TRIGGERED_NONE) == SPELL_CAST_OK)
+                        return;
+
+                    // Step 2: no spell found or cast failed -> search for an item in inventory (mount)
+                    // We start with the fastest mounts as bot will not be able to outrun its master since it is following him/her
+                    uint32 skillLevels[] = { 375, 300, 225, 150, 75 };
+                    for (uint32 level : skillLevels)
+                    {
+                        Item* mount = FindMount(level);
+                        if (mount)
+                        {
+                            UseItem(mount);
+                            return;
+                        }
+                    }
                 }
-            }
-            else if (!GetMaster()->IsMounted() && m_bot->IsMounted())
-            {
-                WorldPacket emptyPacket;
-                m_bot->GetSession()->HandleCancelMountAuraOpcode(emptyPacket);  //updated code
             }
             return;
         }
@@ -2163,25 +2183,42 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                     return;
                 }
 
-                // list out items available for trade
+                // list out items
                 std::ostringstream out;
-                std::list<std::string> lsItemsTradable;
-                std::list<std::string> lsItemsUntradable;
+                std::ostringstream outT;
+                std::ostringstream outNT;
+                uint8 countTotalTradeable = 0;
+                uint8 countTradeable = 0;
+                uint8 countNonTradeable = 0;
 
+                outT << "Tradeable:";
+                outNT << "Non-tradeable:";
                 // list out items in main backpack
                 for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; slot++)
                 {
                     const Item* const pItem = m_bot->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
                     if (pItem)
                     {
-                        MakeItemLink(pItem, out, true);
                         if (pItem->CanBeTraded())
-                            lsItemsTradable.push_back(out.str());
+                        {
+                            countTradeable++;
+                            MakeItemLink(pItem, outT, true);
+                        }
                         else
-                            lsItemsUntradable.push_back(out.str());
-                        out.str("");
+                        {
+                            countNonTradeable++;
+                            MakeItemLink(pItem, outNT, true);
+                        }
                     }
                 }
+
+                countTotalTradeable = countTradeable;
+                out << "Backpack (" << countTradeable + countNonTradeable << "/16) ";
+                if (countTradeable > 0)
+                    out << outT.str();
+                if (countNonTradeable > 0)
+                    out << outNT.str();
+                SendWhisper(out.str().c_str(), *(m_bot->GetTrader()));
 
                 // list out items in other removable backpacks
                 for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag)
@@ -2189,63 +2226,48 @@ void PlayerbotAI::HandleBotOutgoingPacket(const WorldPacket& packet)
                     const Bag* const pBag = (Bag*) m_bot->GetItemByPos(INVENTORY_SLOT_BAG_0, bag);
                     if (pBag)
                     {
-                        // Very cool, but unnecessary
-                        //const ItemPrototype* const pBagProto = pBag->GetProto();
-                        //std::string bagName = pBagProto->Name1;
-                        //ItemLocalization(bagName, pBagProto->ItemId);
+                        countTradeable = 0;
+                        countNonTradeable = 0;
+                        std::ostringstream outbagT;
+                        std::ostringstream outbagNT;
+                        outbagT << "Tradeable:";
+                        outbagNT << "Non-tradeable:";
 
                         for (uint8 slot = 0; slot < pBag->GetBagSize(); ++slot)
                         {
                             const Item* const pItem = m_bot->GetItemByPos(bag, slot);
                             if (pItem)
                             {
-                                MakeItemLink(pItem, out, true);
                                 if (pItem->CanBeTraded())
-                                    lsItemsTradable.push_back(out.str());
+                                {
+                                    countTradeable++;
+                                    MakeItemLink(pItem, outbagT, true);
+                                }
                                 else
-                                    lsItemsUntradable.push_back(out.str());
-                                out.str("");
+                                {
+                                    countNonTradeable++;
+                                    MakeItemLink(pItem, outbagNT, true);
+                                }
                             }
                         }
-                    }
-                }
 
-                ChatHandler ch(m_bot->GetTrader());
-                out.str("");
-                out << "Items I have but cannot trade:";
-                uint32 count = 0;
-                for (std::list<std::string>::iterator iter = lsItemsUntradable.begin(); iter != lsItemsUntradable.end(); iter++)
-                {
-                    out << (*iter);
-                    // Why this roundabout way of posting max 20 items per whisper? To keep the list scrollable.
-                    count++;
-                    if (count % 20 == 0)
-                    {
-                        ch.SendSysMessage(out.str().c_str());
-                        out.str("");
+                        countTotalTradeable += countTradeable;
+                        std::ostringstream outbag;
+                        const ItemPrototype* const pBagProto = pBag->GetProto();
+                        std::string bagName = pBagProto->Name1;
+                        ItemLocalization(bagName, pBagProto->ItemId);
+                        outbag << bagName << " (";
+                        outbag << countTradeable + countNonTradeable << "/" << pBag->GetBagSize();
+                        outbag << ") ";
+                        if (countTradeable > 0)
+                            outbag << outbagT.str();
+                        if (countNonTradeable > 0)
+                            outbag << outbagNT.str();
+                        SendWhisper(outbag.str().c_str(), *(m_bot->GetTrader()));
                     }
                 }
-                if (count > 0)
-                    ch.SendSysMessage(out.str().c_str());
-
-                out.str("");
-                out << "I could give you:";
-                count = 0;
-                for (std::list<std::string>::iterator iter = lsItemsTradable.begin(); iter != lsItemsTradable.end(); iter++)
-                {
-                    out << (*iter);
-                    // Why this roundabout way of posting max 20 items per whisper? To keep the list scrollable.
-                    count++;
-                    if (count % 20 == 0)
-                    {
-                        ch.SendSysMessage(out.str().c_str());
-                        out.str("");
-                    }
-                }
-                if (count > 0)
-                    ch.SendSysMessage(out.str().c_str());
-                else
-                    ch.SendSysMessage("I have nothing to give you.");
+                if (countTotalTradeable == 0)
+                    SendWhisper("I have no items to give you.", *(m_bot->GetTrader()));
 
                 // calculate how much money bot has
                 // send bot the message
@@ -2655,6 +2677,24 @@ Item* PlayerbotAI::FindMount(uint32 matchingRidingSkill) const
             if (!pItemProto || m_bot->CanUseItem(pItemProto) != EQUIP_ERR_OK || pItemProto->RequiredSkill != SKILL_RIDING)
                 continue;
 
+            // Ignore items that can not be used in the current situation (have requirements)
+            uint32 spellId = 0;
+            for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+            {
+                if (pItemProto->Spells[i].SpellId > 0)
+                {
+                    spellId = pItemProto->Spells[i].SpellId;
+                    break;
+                }
+            }
+            const SpellEntry* const spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+            if (spellInfo)
+            {
+                Spell* spell = new Spell(m_bot, spellInfo, false);
+                if (spell && spell->CheckCast(false) != SPELL_CAST_OK)
+                    continue;
+            }
+
             if (pItemProto->RequiredSkillRank == matchingRidingSkill)
                 return pItem;
 
@@ -2676,6 +2716,24 @@ Item* PlayerbotAI::FindMount(uint32 matchingRidingSkill) const
                     const ItemPrototype* const pItemProto = pItem->GetProto();
                     if (!pItemProto || m_bot->CanUseItem(pItemProto) != EQUIP_ERR_OK || pItemProto->RequiredSkill != SKILL_RIDING)
                         continue;
+
+                    // Ignore items that can not be used in the current situation (have requirements)
+                    uint32 spellId = 0;
+                    for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+                    {
+                        if (pItemProto->Spells[i].SpellId > 0)
+                        {
+                            spellId = pItemProto->Spells[i].SpellId;
+                            break;
+                        }
+                    }
+                    const SpellEntry* const spellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
+                    if (spellInfo)
+                    {
+                        Spell* spell = new Spell(m_bot, spellInfo, false);
+                        if (spell && spell->CheckCast(false) != SPELL_CAST_OK)
+                            continue;
+                    }
 
                     if (pItemProto->RequiredSkillRank == matchingRidingSkill)
                         return pItem;
@@ -3700,6 +3758,8 @@ void PlayerbotAI::DoLoot()
     if (!wo || GetMaster()->GetDistance(wo) > float(m_mgr->m_confCollectDistanceMax))
     {
         m_lootCurrent = ObjectGuid();
+        if (GetManager()->m_confDebugWhisper)
+            TellMaster("Object is too far away.");
         return;
     }
 
@@ -3714,6 +3774,8 @@ void PlayerbotAI::DoLoot()
     if ((c && c->IsDespawned()) || (go && !go->IsSpawned()) || (!c && !go))
     {
         m_lootCurrent = ObjectGuid();
+        if (GetManager()->m_confDebugWhisper)
+            TellMaster("Object is not spawned.");
         return;
     }
 
@@ -3725,10 +3787,20 @@ void PlayerbotAI::DoLoot()
             skillId = c->GetCreatureInfo()->GetRequiredLootSkill();
 
         // not a lootable creature, clear it
-        if (!c->HasFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE) &&
-                (!c->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE) ||
-                 (c->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE) && !m_bot->HasSkill(skillId))))
+        if ((!c->HasFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE) &&
+                !c->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE)) ||
+                (c->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE) && !m_bot->HasSkill(skillId)))
         {
+            m_lootCurrent = ObjectGuid();
+            // clear movement target, take next target on next update
+            m_bot->GetMotionMaster()->Clear(false);
+            m_bot->GetMotionMaster()->MoveIdle();
+            return;
+        }
+        else if (c->loot && !c->loot->CanLoot(m_bot))
+        {
+            if (GetManager()->m_confDebugWhisper)
+                TellMaster("%s is not lootable by me.", wo->GetName());
             m_lootCurrent = ObjectGuid();
             // clear movement target, take next target on next update
             m_bot->GetMotionMaster()->Clear(false);
@@ -3742,6 +3814,8 @@ void PlayerbotAI::DoLoot()
         m_bot->GetMotionMaster()->MovePoint(wo->GetMapId(), wo->GetPositionX(), wo->GetPositionY(), wo->GetPositionZ());
         // give time to move to point before trying again
         SetIgnoreUpdateTime(1);
+        if (GetManager()->m_confDebugWhisper)
+            TellMaster("Moving to loot %s", go ? go->GetName() : wo->GetName());
     }
 
     if (m_bot->GetDistance(wo) < INTERACTION_DISTANCE)
@@ -3751,6 +3825,9 @@ void PlayerbotAI::DoLoot()
         bool keyFailed = false;
         bool skillFailed = false;
         bool forceFailed = false;
+
+        if (GetManager()->m_confDebugWhisper)
+            TellMaster("Beginning to loot %s", go ? go->GetName() : wo->GetName());
 
         if (c)  // creature
         {
@@ -3812,39 +3889,39 @@ void PlayerbotAI::DoLoot()
                         switch (LockType(lockInfo->Index[i]))
                         {
                             case LOCKTYPE_OPEN:
-                                if (CastSpell(3365))    // Opening
+                                if (CastSpell(3365) == SPELL_CAST_OK)    // Opening
                                     return;
                                 break;
                             case LOCKTYPE_CLOSE:
-                                if (CastSpell(6233))    // Closing
+                                if (CastSpell(6233) == SPELL_CAST_OK)    // Closing
                                     return;
                                 break;
                             case LOCKTYPE_QUICK_OPEN:
-                                if (CastSpell(6247))    // Opening
+                                if (CastSpell(6247) == SPELL_CAST_OK)    // Opening
                                     return;
                                 break;
                             case LOCKTYPE_QUICK_CLOSE:
-                                if (CastSpell(6247))    // Closing
+                                if (CastSpell(6247) == SPELL_CAST_OK)    // Closing
                                     return;
                                 break;
                             case LOCKTYPE_OPEN_TINKERING:
-                                if (CastSpell(6477))    // Opening
+                                if (CastSpell(6477) == SPELL_CAST_OK)    // Opening
                                     return;
                                 break;
                             case LOCKTYPE_OPEN_KNEELING:
-                                if (CastSpell(22810))    // Opening; listed with 17667 and 22810
+                                if (CastSpell(22810) == SPELL_CAST_OK)    // Opening; listed with 17667 and 22810
                                     return;
                                 break;
                             case LOCKTYPE_OPEN_ATTACKING:
-                                if (CastSpell(8386))    // Attacking
+                                if (CastSpell(8386) == SPELL_CAST_OK)    // Attacking
                                     return;
                                 break;
                             case LOCKTYPE_SLOW_OPEN:
-                                if (CastSpell(21651))   // Opening; also had 26868
+                                if (CastSpell(21651) == SPELL_CAST_OK)   // Opening; also had 26868
                                     return;
                                 break;
                             case LOCKTYPE_SLOW_CLOSE:
-                                if (CastSpell(21652))   // Closing
+                                if (CastSpell(21652) == SPELL_CAST_OK)   // Closing
                                     return;
                                 break;
                             default:
@@ -3884,32 +3961,32 @@ void PlayerbotAI::DoLoot()
             switch (skillId)
             {
                 case SKILL_MINING:
-                    if (HasTool(TC_MINING_PICK) && CastSpell(MINING))
+                    if (HasTool(TC_MINING_PICK) && CastSpell(MINING) == SPELL_CAST_OK)
                         return;
                     else
                         skillFailed = true;
                     break;
                 case SKILL_HERBALISM:
-                    if (CastSpell(HERB_GATHERING))
+                    if (CastSpell(HERB_GATHERING) == SPELL_CAST_OK)
                         return;
                     else
                         skillFailed = true;
                     break;
                 case SKILL_SKINNING:
                     if (c && HasCollectFlag(COLLECT_FLAG_SKIN) &&
-                            HasTool(TC_SKINNING_KNIFE) && CastSpell(SKINNING, *c))
+                            HasTool(TC_SKINNING_KNIFE) && CastSpell(SKINNING, *c) == SPELL_CAST_OK)
                         return;
                     else
                         skillFailed = true;
                     break;
                 case SKILL_LOCKPICKING:
-                    if (CastSpell(PICK_LOCK_1))
+                    if (CastSpell(PICK_LOCK_1) == SPELL_CAST_OK)
                         return;
                     else
                         skillFailed = true;
                     break;
                 case SKILL_NONE:
-                    if (CastSpell(3365)) //Spell 3365 = Opening?
+                    if (CastSpell(3365) == SPELL_CAST_OK) //Spell 3365 = Opening?
                         return;
                     else
                         skillFailed = true;
@@ -4930,9 +5007,10 @@ void PlayerbotAI::UpdateAI(const uint32 /*p_time*/)
         findNearbyCreature();
 
     // if we are casting a spell then interrupt it
+    // unless it is a positive spell then bot is helping a friendly unit and the death of an enemy target should not prevent this
     // make sure any actions that cast a spell set a proper m_ignoreAIUpdatesUntilTime!
     Spell* const pSpell = GetCurrentSpell();
-    if (pSpell && !(pSpell->IsChannelActive() || pSpell->IsAutoRepeat()))
+    if (pSpell && !(pSpell->IsChannelActive() || pSpell->IsAutoRepeat()) && !IsPositiveSpell(pSpell->m_spellInfo->Id))
     {
         // DEBUG_LOG("spell (%s) is being interrupted",pSpell->m_spellInfo->SpellName[0]);
         InterruptCurrentCastingSpell();
@@ -5183,10 +5261,10 @@ bool PlayerbotAI::In_Range(Unit* Target, uint32 spellId)
     return true;
 }
 
-bool PlayerbotAI::CheckBotCast(const SpellEntry* sInfo)
+SpellCastResult PlayerbotAI::CheckBotCast(const SpellEntry* sInfo)
 {
     if (!sInfo)
-        return false;
+        return SPELL_FAILED_ERROR;
 
     // check DoLoot() spells before casting
     Spell* tmp_spell = new Spell(m_bot, sInfo, false);
@@ -5203,42 +5281,34 @@ bool PlayerbotAI::CheckBotCast(const SpellEntry* sInfo)
                 tmp_spell->m_targets.setGOTarget(obj);
         }
 
+        // DEBUG_LOG("CheckBotCast SpellCastResult res(%u)", res);
         SpellCastResult res = tmp_spell->CheckCast(false);
-        switch (res)
-        {
-            case SPELL_CAST_OK:
-                return true;
-            case SPELL_FAILED_ALREADY_OPEN:
-            case SPELL_FAILED_TRY_AGAIN:
-                return true;
-            default:
-                DEBUG_LOG("CheckBotCast SpellCastResult res(%u)", res);
-        }
+        return tmp_spell->CheckCast(false);
     }
-    return false;
+    return SPELL_FAILED_ERROR;
 }
 
-bool PlayerbotAI::CastSpell(const char* args)
+SpellCastResult PlayerbotAI::CastSpell(const char* args)
 {
     uint32 spellId = getSpellId(args);
-    return (spellId) ? CastSpell(spellId) : false;
+    return (spellId) ? CastSpell(spellId) : SPELL_NOT_FOUND;
 }
 
-bool PlayerbotAI::CastSpell(uint32 spellId, Unit& target)
+SpellCastResult PlayerbotAI::CastSpell(uint32 spellId, Unit& target)
 {
     ObjectGuid oldSel = m_bot->GetSelectionGuid();
     m_bot->SetSelectionGuid(target.GetObjectGuid());
-    bool rv = CastSpell(spellId);
+    SpellCastResult rv = CastSpell(spellId);
     m_bot->SetSelectionGuid(oldSel);
     return rv;
 }
 
-bool PlayerbotAI::CastSpell(uint32 spellId)
+SpellCastResult PlayerbotAI::CastSpell(uint32 spellId)
 {
     // some AIs don't check if the bot doesn't have spell before using it
     // so just return false when this happens
     if (spellId == 0)
-        return false;
+        return SPELL_FAILED_NOT_KNOWN;
 
     // see Creature.cpp 1738 for reference
     // don't allow bot to cast damage spells on friends
@@ -5246,19 +5316,22 @@ bool PlayerbotAI::CastSpell(uint32 spellId)
     if (!pSpellInfo)
     {
         TellMaster("missing spell entry in CastSpell for spellid %u.", spellId);
-        return false;
+        return SPELL_NOT_FOUND;
     }
 
     // check spell cooldown
     if (!m_bot->IsSpellReady(*pSpellInfo))
-        return false;
+        return SPELL_FAILED_NOT_READY;
 
     // for AI debug purpose: uncomment the following line and bot will tell Master of every spell they attempt to cast
     // TellMaster("I'm trying to cast %s (spellID %u)", pSpellInfo->SpellName[0], spellId);
 
-    // Power check (stolen from: CreatureAI.cpp - CreatureAI::CanCastSpell)
-    if (m_bot->GetPower((Powers)pSpellInfo->powerType) < Spell::CalculatePowerCost(pSpellInfo, m_bot))
-        return false;
+    // Power check
+    // We use Spell::CheckPower() instead of UnitAI::CanCastSpell() because bots are players and have more requirements than mere units
+    Spell* tmp_spell = new Spell(m_bot, pSpellInfo, false);
+    SpellCastResult res = tmp_spell->CheckPower();
+    if (res != SPELL_CAST_OK)
+        return res;
 
     // set target
     ObjectGuid targetGUID = m_bot->GetSelectionGuid();
@@ -5274,8 +5347,8 @@ bool PlayerbotAI::CastSpell(uint32 spellId)
     }
     else
     {
-        if (pTarget && m_bot->CanAssist(pTarget))
-            return false;
+        if (pTarget && m_bot->CanAssist(pTarget))    // Can't cast hostile spell on friendly unit
+            return SPELL_FAILED_TARGET_FRIENDLY;
 
         m_bot->SetInFront(pTarget);
     }
@@ -5305,8 +5378,9 @@ bool PlayerbotAI::CastSpell(uint32 spellId)
     {
         if (m_lootCurrent)
         {
-            if (!CheckBotCast(pSpellInfo))
-                return false;
+            SpellCastResult castResult = CheckBotCast(pSpellInfo);
+            if (castResult != SPELL_CAST_OK)
+                return castResult;
 
             std::unique_ptr<WorldPacket> packet(new WorldPacket(CMSG_CAST_SPELL, 4 + 1 + 4 + 8));
             *packet << spellId;
@@ -5323,7 +5397,7 @@ bool PlayerbotAI::CastSpell(uint32 spellId)
 
                 GameObject* obj = m_bot->GetMap()->GetGameObject(m_lootCurrent);
                 if (!obj)
-                    return false;
+                    return SPELL_FAILED_BAD_TARGETS;
 
                 // add other go types here, i.e.:
                 // GAMEOBJECT_TYPE_CHEST - loot quest items of chest
@@ -5346,50 +5420,49 @@ bool PlayerbotAI::CastSpell(uint32 spellId)
                     m_bot->GetMotionMaster()->MoveIdle();
                 }
             }
+            return SPELL_CAST_OK;
         }
         else
-            return false;
+            return SPELL_FAILED_BAD_IMPLICIT_TARGETS;
     }
     else
     {
         // Check spell range
         if (!In_Range(pTarget, spellId))
-            return false;
+            return SPELL_FAILED_OUT_OF_RANGE;
 
         // Check line of sight
         if (!m_bot->IsWithinLOSInMap(pTarget))
-            return false;
+            return SPELL_FAILED_LINE_OF_SIGHT;
+
+        // Some casting times are negative so set ignore update time to 1 sec to avoid stucking the bot AI
+        SetIgnoreUpdateTime(std::max(CastTime, 0.0f) + 1);
 
         if (IsAutoRepeatRangedSpell(pSpellInfo))
-            m_bot->CastSpell(pTarget, pSpellInfo, TRIGGERED_OLD_TRIGGERED); // cast triggered spell
+            return m_bot->CastSpell(pTarget, pSpellInfo, TRIGGERED_OLD_TRIGGERED); // cast triggered spell
         else
-            m_bot->CastSpell(pTarget, pSpellInfo, TRIGGERED_NONE);          // uni-cast spell
+            return m_bot->CastSpell(pTarget, pSpellInfo, TRIGGERED_NONE);          // uni-cast spell
     }
-
-    // Some casting times are negative so set ignore update time to 1 sec to avoid stucking the bot AI
-    SetIgnoreUpdateTime(std::max(CastTime, 0.0f) + 1);
-
-    return true;
 }
 
-bool PlayerbotAI::CastPetSpell(uint32 spellId, Unit* target)
+SpellCastResult PlayerbotAI::CastPetSpell(uint32 spellId, Unit* target)
 {
     if (spellId == 0)
-        return false;
+        return SPELL_FAILED_NOT_KNOWN;
 
     Pet* pet = m_bot->GetPet();
     if (!pet)
-        return false;
+        return SPELL_FAILED_NO_PET;
 
     const SpellEntry* const pSpellInfo = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
     if (!pSpellInfo)
     {
         TellMaster("Missing spell entry in CastPetSpell()");
-        return false;
+        return SPELL_NOT_FOUND;
     }
 
     if (!pet->IsSpellReady(*pSpellInfo))
-        return false;
+        return SPELL_FAILED_NOT_READY;
 
     // set target
     Unit* pTarget;
@@ -5408,8 +5481,8 @@ bool PlayerbotAI::CastPetSpell(uint32 spellId, Unit* target)
     }
     else
     {
-        if (pTarget && m_bot->CanAssist(pTarget))
-            return false;
+        if (pTarget && m_bot->CanAssist(pTarget))    // Can cast hostile spell on friendly unit
+            return SPELL_FAILED_TARGET_FRIENDLY;
 
         if (!pet->isInFrontInMap(pTarget, 10)) // distance probably should be calculated
             pet->SetFacingTo(pet->GetAngle(pTarget));
@@ -5419,29 +5492,33 @@ bool PlayerbotAI::CastPetSpell(uint32 spellId, Unit* target)
 
     Spell* const pSpell = pet->FindCurrentSpellBySpellId(spellId);
     if (!pSpell)
-        return false;
+        return SPELL_FAILED_NOT_KNOWN;
 
-    return true;
+    return SPELL_CAST_OK;
 }
 
 // Perform sanity checks and cast spell
-bool PlayerbotAI::Buff(uint32 spellId, Unit* target, void (*beforeCast)(Player*))
+SpellCastResult PlayerbotAI::Buff(uint32 spellId, Unit* target, void (*beforeCast)(Player*))
 {
     if (spellId == 0)
-        return false;
+        return SPELL_FAILED_NOT_KNOWN;
+
+    // Target already has aura from spellId, skip for speed. May need to add exceptions
+    if (target->HasAura(spellId))
+        return SPELL_FAILED_AURA_BOUNCED;
 
     SpellEntry const* spellProto = sSpellTemplate.LookupEntry<SpellEntry>(spellId);
 
     if (!spellProto)
-        return false;
+        return SPELL_NOT_FOUND;
 
     if (!target)
-        return false;
+        return SPELL_FAILED_BAD_IMPLICIT_TARGETS;
 
     // Select appropriate spell rank for target's level
     spellProto = sSpellMgr.SelectAuraRankForLevel(spellProto, target->getLevel());
     if (!spellProto)
-        return false;
+        return SPELL_NOT_FOUND;
 
     // Check if spell will boost one of already existent auras
     bool willBenefitFromSpell = false;
@@ -5463,7 +5540,7 @@ bool PlayerbotAI::Buff(uint32 spellId, Unit* target, void (*beforeCast)(Player*)
     }
 
     if (!willBenefitFromSpell)
-        return false;
+        return SPELL_FAILED_AURA_BOUNCED;
 
     // Druids may need to shapeshift before casting
     if (beforeCast)
@@ -5473,13 +5550,13 @@ bool PlayerbotAI::Buff(uint32 spellId, Unit* target, void (*beforeCast)(Player*)
 }
 
 // Can be used for personal buffs like Mage Armor and Inner Fire
-bool PlayerbotAI::SelfBuff(uint32 spellId)
+SpellCastResult PlayerbotAI::SelfBuff(uint32 spellId)
 {
     if (spellId == 0)
-        return false;
+        return SPELL_FAILED_NOT_KNOWN;
 
     if (m_bot->HasAura(spellId))
-        return false;
+        return SPELL_FAILED_AURA_BOUNCED;
 
     return CastSpell(spellId, *m_bot);
 }
@@ -6747,13 +6824,13 @@ bool PlayerbotAI::CanStore()
                 totalfree =  totalfree + pBag->GetFreeSlots();
         }
     }
-    return totalfree;
+    return totalfree > 0;
 }
 
 // use item on self
 void PlayerbotAI::UseItem(Item* item)
 {
-    UseItem(item, TARGET_FLAG_SELF, ObjectGuid());
+    UseItem(item, m_bot);
 }
 
 // use item on equipped item
@@ -7788,12 +7865,12 @@ void PlayerbotAI::Sell(const uint32 itemid)
     }
 }
 
-void PlayerbotAI::SellGarbage(Player& /*player*/, bool /*bListNonTrash*/, bool bDetailTrashSold, bool bVerbose)
+void PlayerbotAI::SellGarbage(Player& /*player*/, bool bListNonTrash, bool bDetailTrashSold, bool bVerbose)
 {
     uint32 SoldCost = 0;
     uint32 SoldQuantity = 0;
+    bool sellableItems = false;
     std::ostringstream report, goods;
-    ChatHandler ch(GetMaster());
 
     // list out items in main backpack
     for (uint8 slot = INVENTORY_SLOT_ITEM_START; slot < INVENTORY_SLOT_ITEM_END; ++slot)
@@ -7802,62 +7879,38 @@ void PlayerbotAI::SellGarbage(Player& /*player*/, bool /*bListNonTrash*/, bool b
         if (item)
             _doSellItem(item, report, goods, SoldCost, SoldQuantity);
     }
+    if (goods.str().size() > 0)
+        sellableItems = true;
+    if (bVerbose && bListNonTrash && goods.str().size() > 0)    // Tell master of unsold items
+        TellMaster("Unsold items in my main backpack: %s", goods.str().c_str());
 
-    uint8 notempty = 0;
-    if (goods.str().size() != 0)
-    {
-        notempty = 1;
-        TellMaster("Heres a list of items I can sell:");
-    }
     // and each of our other packs
     for (uint8 bag = INVENTORY_SLOT_BAG_START; bag < INVENTORY_SLOT_BAG_END; ++bag) // check for extra bags
     {
-        // we want to output the item list to links one bag at a time and clear it, to prevent the list from overloading
-        if (goods.str().size() != 0) // This will be one bag behind in the check. if the previous bag listed anything, llist that now and clear the list
-        {
-            if (notempty == 0)
-            {
-                TellMaster("Heres a list of items I can sell:");
-                notempty = 1; // at least one bag must have had something in it, used at end of this function
-            }
-            else
-            {
-                ch.SendSysMessage(goods.str().c_str()); // previous bags list contents, including main backpack first.
-                goods.str(""); // clear the list for next bag
-            }
-        }
-
+        std::ostringstream subBagGoods;
         const Bag* const pBag = static_cast<Bag*>(m_bot->GetItemByPos(INVENTORY_SLOT_BAG_0, bag));
         if (pBag)
         {
-            // Very nice, but who cares what bag it's in?
-            //const ItemPrototype* const pBagProto = pBag->GetProto();
-            //std::string bagName = pBagProto->Name1;
-            //ItemLocalization(bagName, pBagProto->ItemId);
-            //goods << "\nIn my " << bagName << ":";
-
             for (uint8 slot = 0; slot < pBag->GetBagSize(); ++slot)
             {
                 Item* const item = m_bot->GetItemByPos(bag, slot);
                 if (item)
-                    _doSellItem(item, report, goods, SoldCost, SoldQuantity);
+                    _doSellItem(item, report, subBagGoods, SoldCost, SoldQuantity);
+            }
+            if (subBagGoods.str().size() > 0)
+                sellableItems = true;
+            if (bVerbose && bListNonTrash && subBagGoods.str().size() > 0)  // Tell master of unsold items
+            {
+                const ItemPrototype* const bagProto = pBag->GetProto();     // Get bag name to help master retrieve it
+                std::string bagName = bagProto->Name1;
+                ItemLocalization(bagName, bagProto->ItemId);
+                TellMaster("Unsold items in my %s: %s", bagName.c_str(), subBagGoods.str().c_str());
             }
         }
     }
 
-    if (goods.str().size() != 0) // This will make sure items in the last bag were output to links
-    {
-        ch.SendSysMessage(goods.str().c_str());
-        goods.str(""); // clear the list
-        notempty = 1; // at least one bag must have had something in it, used at end of this function
-    }
-    if (notempty == 1)
-        TellMaster("All of the above items could be sold"); // links are complete, notify master
-
     if (!bDetailTrashSold) // no trash got sold
         report.str(""); // clear ostringstream
-
-    report << "Auto sell is set " << (SellWhite ? "|h|cff1eff00TO|h|r" : "to |h|cffff0000NOT|h|r") << " sell white items. ";
 
     if (SoldCost > 0)
     {
@@ -7874,7 +7927,7 @@ void PlayerbotAI::SellGarbage(Player& /*player*/, bool /*bListNonTrash*/, bool b
     // For all bags, non-gray sellable items
     if (bVerbose)
     {
-        if (SoldQuantity == 0 && notempty == 0)
+        if (SoldQuantity == 0 && !sellableItems)
             TellMaster("No items to sell, trash or otherwise.");
     }
 }
@@ -8009,6 +8062,18 @@ void PlayerbotAI::HandleCommand(const std::string& text, Player& fromPlayer)
 
     else if (ExtractCommand("help", input))
         _HandleCommandHelp(input, fromPlayer);
+
+    // debug can be enabled without needing to change playerbot.conf file
+    else if (text == "debug")
+    {
+        TellMaster("Debugging is on. Type 'no debug' to disable.");
+        GetManager()->m_confDebugWhisper = true;
+    }
+    else if (text == "no debug")
+    {
+        TellMaster("Debugging is off.");
+        GetManager()->m_confDebugWhisper = false;
+    }
 
     else if (fromPlayer.GetSession()->GetSecurity() > SEC_PLAYER && ExtractCommand("gm", input))
         _HandleCommandGM(input, fromPlayer);
@@ -8158,7 +8223,14 @@ void PlayerbotAI::HandleCommand(const std::string& text, Player& fromPlayer)
         else
         {
             // TODO: make this only in response to direct whispers (chatting in party chat can in fact be between humans)
-            std::string msg = "What? For a list of commands, ask for 'help'.";
+            std::string msg = "What is [";
+            std::string textsub;
+            if (text.length() > 10)
+                textsub = text.substr(0, 10) + "...";
+            else
+                textsub = text;
+            msg += textsub.c_str();
+            msg += "]? For a list of commands, ask for 'help'.";
             SendWhisper(msg, fromPlayer);
             m_bot->HandleEmoteCommand(EMOTE_ONESHOT_TALK);
         }

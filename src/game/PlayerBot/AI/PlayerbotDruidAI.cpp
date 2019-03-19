@@ -291,7 +291,7 @@ CombatManeuverReturns PlayerbotDruidAI::DoNextCombatManeuverPVE(Unit* pTarget)
 
 CombatManeuverReturns PlayerbotDruidAI::DoNextCombatManeuverPVP(Unit* pTarget)
 {
-    if (m_ai->CastSpell(MOONFIRE))
+    if (m_ai->CastSpell(MOONFIRE) == SPELL_CAST_OK)
         return RETURN_CONTINUE;
 
     return DoNextCombatManeuverPVE(pTarget); // TODO: bad idea perhaps, but better than the alternative
@@ -372,7 +372,7 @@ CombatManeuverReturns PlayerbotDruidAI::_DoNextPVECombatManeuverCat(Unit* pTarge
     if (newTarget && COWER > 0 && m_bot->IsSpellReady(COWER) && CastSpell(COWER, pTarget))
         return RETURN_CONTINUE;
 
-    if (SHRED > 0 && pTarget->isInBackInMap(m_bot, 5.0f) && m_ai->CastSpell(SHRED, *pTarget))
+    if (SHRED > 0 && pTarget->isInBackInMap(m_bot, 5.0f) && m_ai->CastSpell(SHRED, *pTarget) == SPELL_CAST_OK)
         return RETURN_CONTINUE;
 
     if (FAERIE_FIRE_FERAL > 0 && m_ai->In_Reach(pTarget, FAERIE_FIRE_FERAL) && !pTarget->HasAura(FAERIE_FIRE_FERAL, EFFECT_INDEX_0) && CastSpell(FAERIE_FIRE_FERAL, pTarget))
@@ -451,7 +451,7 @@ CombatManeuverReturns PlayerbotDruidAI::HealPlayer(Player* target)
     {
         if (m_bot->isInCombat())
         {
-            if (REBIRTH && m_ai->In_Reach(target, REBIRTH) && m_bot->IsSpellReady(REBIRTH) && m_ai->CastSpell(REBIRTH, *target))
+            if (REBIRTH && m_ai->In_Reach(target, REBIRTH) && m_bot->IsSpellReady(REBIRTH) && m_ai->CastSpell(REBIRTH, *target) == SPELL_CAST_OK)
             {
                 std::string msg = "Resurrecting ";
                 msg += target->GetName();
@@ -721,10 +721,10 @@ bool PlayerbotDruidAI::BuffHelper(PlayerbotAI* ai, uint32 spellId, Unit* target)
     if (!target)      return false;
 
     Pet* pet = target->GetPet();
-    if (pet && !pet->HasAuraType(SPELL_AURA_MOD_UNATTACKABLE) && ai->Buff(spellId, pet, &(PlayerbotDruidAI::GoBuffForm)))
+    if (pet && !pet->HasAuraType(SPELL_AURA_MOD_UNATTACKABLE) && ai->Buff(spellId, pet, &(PlayerbotDruidAI::GoBuffForm)) == SPELL_CAST_OK)
         return true;
 
-    if (ai->Buff(spellId, target, &(PlayerbotDruidAI::GoBuffForm)))
+    if (ai->Buff(spellId, target, &(PlayerbotDruidAI::GoBuffForm)) == SPELL_CAST_OK)
         return true;
 
     return false;
@@ -749,7 +749,7 @@ void PlayerbotDruidAI::GoBuffForm(Player* self)
 // Match up with "Pull()" below
 bool PlayerbotDruidAI::CanPull()
 {
-    if (BEAR_FORM && FAERIE_FIRE_FERAL)
+    if (BEAR_FORM > 0 && FAERIE_FIRE_FERAL)
         return true;
 
     return false;
@@ -758,7 +758,7 @@ bool PlayerbotDruidAI::CanPull()
 // Match up with "CanPull()" above
 bool PlayerbotDruidAI::Pull()
 {
-    if (BEAR_FORM && (CastSpell(FAERIE_FIRE_FERAL) & RETURN_CONTINUE))
+    if (BEAR_FORM > 0 && (CastSpell(FAERIE_FIRE_FERAL) & RETURN_CONTINUE))
         return true;
 
     return false;
@@ -771,7 +771,7 @@ bool PlayerbotDruidAI::CastHoTOnTank()
     if ((PlayerbotAI::ORDERS_HEAL & m_ai->GetCombatOrder()) == 0) return false;
 
     // Druid HoTs: Rejuvenation, Regrowth, Tranquility (channeled, AoE), Lifebloom, and Wild Growth
-    if (REJUVENATION)
+    if (REJUVENATION > 0)
         return (RETURN_CONTINUE & CastSpell(REJUVENATION, m_ai->GetGroupTank()));
 
     return false;
