@@ -232,8 +232,6 @@ void hyjalAI::Aggro(Unit* /*who*/)
     for (uint8 i = 0; i < MAX_SPELL; ++i)
         if (m_aSpells[i].m_uiCooldown)
             m_uiSpellTimer[i] = m_aSpells[i].m_uiCooldown;
-
-    DoTalk(ATTACKED);
 }
 
 void hyjalAI::SpawnCreatureForWave(uint32 uiMobEntry)
