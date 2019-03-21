@@ -1177,6 +1177,11 @@ bool AuctionBotSeller::Initialize()
 	    case ITEM_CLASS_GEM:
 	    case ITEM_CLASS_KEY:
 	    case ITEM_CLASS_REAGENT:
+	    {
+		    // Also make sure to tell me what kind of filters should
+		    // _really_ be there.
+		    break;
+	    }
                 
             default:
                 continue;
