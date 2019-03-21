@@ -75,7 +75,7 @@ bool FleeingMovementGenerator<T>::_getPoint(T& owner, float& x, float& y, float&
 
     float dist;
 
-    iif(dist_from_caster < MIN_QUIET_DISTANCE)
+    if(dist_from_caster < MIN_QUIET_DISTANCE)
 		dist = frand(0.4f, 1.3f) * (MIN_QUIET_DISTANCE - dist_from_caster);
 	else if (dist_from_caster > MAX_QUIET_DISTANCE)
 	dist = frand(0.4f, 1.0f) * (MAX_QUIET_DISTANCE - MIN_QUIET_DISTANCE);
