@@ -1173,7 +1173,11 @@ bool AuctionBotSeller::Initialize()
                         continue;
                 break;
             }
-
+            case ITEM_CLASS_QUEST:
+			case ITEM_CLASS_GEM:
+			case ITEM_CLASS_KEY:
+			case ITEM_CLASS_REAGENT:
+                
             default:
                 continue;
         }
