@@ -312,7 +312,10 @@ void BattleGroundQueue::RemovePlayer(ObjectGuid guid, bool decreaseInvitedCount)
     // we count from MAX_BATTLEGROUND_QUEUES - 1 to 0
     // variable index removes useless searching in other team's queue
     uint32 index = BattleGround::GetTeamIndexByTeamId(group->GroupTeam);
-    
+    //uint32 bgid = BattleGround::GetBgMap(group->IsInvitedToBGInstanceGUID)
+    if (group->BgTypeId == 1 || group->BgTypeId == 2 || group->BgTypeId == 3 || group->BgTypeId == 7  && sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
+		index = TEAM_INDEX_ALLIANCE;
+	
     for (int8 bracket_id_tmp = MAX_BATTLEGROUND_BRACKETS - 1; bracket_id_tmp >= 0 && bracket_id == -1; --bracket_id_tmp)
     {
         // we must check premade and normal team's queue - because when players from premade are joining bg,
