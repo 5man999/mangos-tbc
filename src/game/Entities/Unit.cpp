@@ -6199,7 +6199,7 @@ void Unit::CombatStop(bool includingCast, bool includingCombo)
     if (GetTypeId() == TYPEID_PLAYER)
         ((Player*)this)->SendAttackSwingCancelAttack();     // melee and ranged forced attack cancel
 
-    AttackStop(true, includingCast, includingCombo);
+    AttackStop(true, includingCast);
     RemoveAllAttackers();
     DeleteThreatList();
 
