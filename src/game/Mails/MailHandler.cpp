@@ -92,6 +92,16 @@ void WorldSession::HandleSendMail(WorldPacket& recv_data)
         recv_data.rpos(recv_data.wpos());                   // set to end to avoid warnings spam
         return;
     }
+    
+    int level = 61;
+	if (_player->getLevel() <= level)
+	{
+		ChatHandler(_player).PSendSysMessage(3113);
+		_player->SendMailResult(0, MAIL_SEND, MAIL_ERR_INTERNAL_ERROR);
+		recv_data.rpos(recv_data.wpos());                   // set to end to avoid warnings spam
+		return;
+
+	}
 
     ObjectGuid itemGuids[MAX_MAIL_ITEMS];
 
