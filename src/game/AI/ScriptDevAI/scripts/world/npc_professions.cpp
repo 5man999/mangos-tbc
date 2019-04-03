@@ -59,6 +59,16 @@ there is no difference here (except that default text is chosen with `gameobject
 # gossip item and box texts
 ###*/
 
+#define GOSSIP_LEARN_POTION         "Please teach me how to become a Master of Potions, Lauranna"
+#define GOSSIP_UNLEARN_POTION       "I wish to unlearn Potion Mastery"
+#define GOSSIP_LEARN_TRANSMUTE      "Please teach me how to become a Master of Transmutations, Zarevhi"
+#define GOSSIP_UNLEARN_TRANSMUTE    "I wish to unlearn Transmutation Mastery"
+#define GOSSIP_LEARN_ELIXIR         "Please teach me how to become a Master of Elixirs, Lorokeem"
+#define GOSSIP_UNLEARN_ELIXIR       "I wish to unlearn Elixir Mastery"
+
+#define BOX_UNLEARN_ALCHEMY_SPEC    "Do you really want to unlearn your alchemy specialty and lose all associated recipes? \n Cost: "
+
+
 #define GOSSIP_WEAPON_LEARN         "Please teach me how to become a Weaponsmith"
 #define GOSSIP_WEAPON_UNLEARN       "I wish to unlearn the art of Weaponsmithing"
 #define GOSSIP_ARMOR_LEARN          "Please teach me how to become a Armorsmith"
@@ -136,6 +146,54 @@ there is no difference here (except that default text is chosen with `gameobject
 
 #define S_LEARN_GOBLIN          20221
 #define S_LEARN_GNOMISH         20220
+
+#define S_UNLEARN_TRANSMUTE     41565,
+#define S_UNLEARN_ELIXIR        41564,
+#define S_UNLEARN_POTION        41563,
+
+/*###
+# specialization trainers
+###*/
+
+    /* Alchemy */
+#define N_TRAINER_TRANSMUTE     22427, // Zarevhi
+#define N_TRAINER_ELIXIR        19052, // Lorokeem
+#define N_TRAINER_POTION        17909, // Lauranna Thar'well
+
+    /* Blacksmithing */
+//   N_TRAINER_SMITHOMNI1    = 11145, // Myolor Sunderfury
+//  N_TRAINER_SMITHOMNI2    = 11176, // Krathok Moltenfist
+//  N_TRAINER_WEAPON1       = 11146, // Ironus Coldsteel
+//    N_TRAINER_WEAPON2       = 11178, // Borgosh Corebender
+//    N_TRAINER_ARMOR1        = 5164, // Grumnus Steelshaper
+//    N_TRAINER_ARMOR2        = 11177, // Okothos Ironrager
+//    N_TRAINER_HAMMER        = 11191, // Lilith the Lithe
+//    N_TRAINER_AXE           = 11192, // Kilram
+//    N_TRAINER_SWORD         = 11193, // Seril Scourgebane
+
+    /* Leatherworking */
+ //   N_TRAINER_DRAGON1       = 7866, // Peter Galen
+//    N_TRAINER_DRAGON2       = 7867, // Thorkaf Dragoneye
+//    N_TRAINER_ELEMENTAL1    = 7868, // Sarah Tanner
+//    N_TRAINER_ELEMENTAL2    = 7869, // Brumn Winterhoof
+//    N_TRAINER_TRIBAL1       = 7870, // Caryssia Moonhunter
+//    N_TRAINER_TRIBAL2       = 7871, // Se'Jib
+
+    /* Tailoring */
+//    N_TRAINER_SPELLFIRE     = 22213, // Gidge Spellweaver
+//    N_TRAINER_MOONCLOTH     = 22208, // Nasmara Moonsong
+//    N_TRAINER_SHADOWEAVE    = 22212, // Andrion Darkspinner
+
+
+/*###
+# specialization quests
+###*/
+
+ /* Alchemy */
+#define Q_MASTER_TRANSMUTE      10899,
+#define Q_MASTER_ELIXIR         10902,
+#define Q_MASTER_POTION         10897,
+
 
 /*###
 # formulas to calculate unlearning cost
@@ -282,133 +340,204 @@ void ProfessionUnlearnSpells(Player* pPlayer, uint32 type)
             break;
     }
 }
+
+
+
 /* #Alchemy Training##*/
-inline bool HasAlchemySpell(Player* player)
+inline bool HasAlchemySpell(Player* pPlayer)
 {
-return (player->HasSpell(S_TRANSMUTE) || player->HasSpell(S_ELIXIR) || player->HasSpell(S_POTION));
+    return (pPlayer->HasSpell(S_TRANSMUTE) || pPlayer->HasSpell(S_ELIXIR) || pPlayer->HasSpell(S_POTION));
 }
 
-bool GossipHello_npc_prof_Alchemy(Player* player, Creature* creature) override
+bool GossipHello_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature) override
     {
-        if (creature->IsQuestGiver())
-            player->PrepareQuestMenu(creature->GetGUID());
+        if (pCreature->IsQuestGiver())
+            pPlayer->PrepareQuestMenu(pCreature->GetGUID());
 
-        if (creature->IsVendor())
-            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+        if (pCreature->IsVendor())
+            AddGossipItemFor(pPlayer, GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
 
-        if (creature->IsTrainer())
-            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, GOSSIP_TEXT_TRAIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRAIN);
+        if (pCreature->IsTrainer())
+            AddGossipItemFor(pPlayer, GOSSIP_ICON_TRAINER, GOSSIP_TEXT_TRAIN, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRAIN);
+        
+         //uint32 eCreature = pCreature->GetEntry();
 
-        if (player->HasSkill(SKILL_ALCHEMY) && player->GetBaseSkillValue(SKILL_ALCHEMY) >= 350 && player->getLevel() > 67)
+        if (pPlayer->HasSkill(SKILL_ALCHEMY) && pPlayer->GetBaseSkillValue(SKILL_ALCHEMY) >= 350 && pPlayer->getLevel() > 67)
         {
-            if (player->GetQuestRewardStatus(Q_MASTER_TRANSMUTE) || player->GetQuestRewardStatus(Q_MASTER_ELIXIR) || player->GetQuestRewardStatus(Q_MASTER_POTION))
+            if (pPlayer->GetQuestRewardStatus(Q_MASTER_TRANSMUTE) || pPlayer->GetQuestRewardStatus(Q_MASTER_ELIXIR) || pPlayer->GetQuestRewardStatus(Q_MASTER_POTION))
             {
-                switch (creature->GetEntry())
+                switch (pCreature->GetEntry())
                 {
                     case N_TRAINER_TRANSMUTE:                                 //Zarevhi
-                        if (!HasAlchemySpell(player))
-                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_TRANSMUTE,    GOSSIP_SENDER_LEARN,    GOSSIP_ACTION_INFO_DEF + 1);
-                        if (player->HasSpell(S_TRANSMUTE))
-                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_UNLEARN_TRANSMUTE,  GOSSIP_SENDER_UNLEARN,  GOSSIP_ACTION_INFO_DEF + 4);
+                        if (!HasAlchemySpell(pPlayer))
+                            pPlayer->ADD_GOSSIP_ITEM(pPlayer, GOSSIP_ICON_CHAT, GOSSIP_LEARN_TRANSMUTE,    GOSSIP_SENDER_LEARN,    GOSSIP_ACTION_INFO_DEF + 1);
+                        if (pPlayer->HasSpell(S_TRANSMUTE))
+                            pPlayer->ADD_GOSSIP_ITEM(pPlayer, GOSSIP_ICON_CHAT, GOSSIP_UNLEARN_TRANSMUTE,  GOSSIP_SENDER_UNLEARN,  GOSSIP_ACTION_INFO_DEF + 4);
                         break;
                     case N_TRAINER_ELIXIR:                                 //Lorokeem
-                        if (!HasAlchemySpell(player))
-                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_ELIXIR,       GOSSIP_SENDER_LEARN,    GOSSIP_ACTION_INFO_DEF + 2);
+                        if (!HasAlchemySpell(pPlayer))
+                            pPlayer->ADD_GOSSIP_ITEM(pPlayer, GOSSIP_ICON_CHAT, GOSSIP_LEARN_ELIXIR,       GOSSIP_SENDER_LEARN,    GOSSIP_ACTION_INFO_DEF + 2);
                         if (player->HasSpell(S_ELIXIR))
-                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_UNLEARN_ELIXIR,     GOSSIP_SENDER_UNLEARN,  GOSSIP_ACTION_INFO_DEF + 5);
+                            pPlayer->ADD_GOSSIP_ITEM(pPlayer, GOSSIP_ICON_CHAT, GOSSIP_UNLEARN_ELIXIR,     GOSSIP_SENDER_UNLEARN,  GOSSIP_ACTION_INFO_DEF + 5);
                         break;
                     case N_TRAINER_POTION:                                 //Lauranna Thar'well
-                        if (!HasAlchemySpell(player))
-                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_POTION,       GOSSIP_SENDER_LEARN,    GOSSIP_ACTION_INFO_DEF + 3);
-                        if (player->HasSpell(S_POTION))
-                            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_UNLEARN_POTION,     GOSSIP_SENDER_UNLEARN,  GOSSIP_ACTION_INFO_DEF + 6);
+                        if (!HasAlchemySpell(pPlayer))
+                            pPlayer->ADD_GOSSIP_ITEM(pPlayer, GOSSIP_ICON_CHAT, GOSSIP_LEARN_POTION,       GOSSIP_SENDER_LEARN,    GOSSIP_ACTION_INFO_DEF + 3);
+                        if (pPlayer->HasSpell(S_POTION))
+                            pPlayer->ADD_GOSSIP_ITEM(pPlayer, GOSSIP_ICON_CHAT, GOSSIP_UNLEARN_POTION,     GOSSIP_SENDER_UNLEARN,  GOSSIP_ACTION_INFO_DEF + 6);
                         break;
                 }
             }
         }
 
-        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        pPlayer->ADD_GOSSIP_ITEM(pPlayer, pPlayer->GetGossipTextId(pCreature), pCreature->GetGUID());
         return true;
     }
 
-    void SendActionMenu(Player* player, Creature* creature, uint32 action)
+void SendActionMenu_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature, uint32 action)
     {
-        switch (action)
+        switch (uiAction)
         {
             case GOSSIP_ACTION_TRADE:
-                player->GetSession()->SendListInventory(creature->GetGUID());
+                pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
                 break;
             case GOSSIP_ACTION_TRAIN:
-                player->GetSession()->SendTrainerList(creature->GetGUID());
+                pPlayer->SEND_TRAINERLIST(pCreature->GetObjectGuid());
                 break;
                 //Learn Alchemy
             case GOSSIP_ACTION_INFO_DEF + 1:
-                ProcessCastaction(player, creature, S_TRANSMUTE, S_LEARN_TRANSMUTE, DoLearnCost(player));
+                if (!pPlayer->HasSpell(S_TRANSMUTE))
+                {
+                    pPlayer->CastSpell(pPlayer, S_LEARN_TRANSMUTE, TRIGGERED_OLD_TRIGGERED);
+                }
+                pPlayer->CLOSE_GOSSIP_MENU();
                 break;
             case GOSSIP_ACTION_INFO_DEF + 2:
-                ProcessCastaction(player, creature, S_ELIXIR, S_LEARN_ELIXIR, DoLearnCost(player));
+                if (!pPlayer->HasSpell(S_ELIXIR))
+                {
+                    pPlayer->CastSpell(pPlayer, S_LEARN_ELIXIR, TRIGGERED_OLD_TRIGGERED);
+                }
+                pPlayer->CLOSE_GOSSIP_MENU(); 
                 break;
             case GOSSIP_ACTION_INFO_DEF + 3:
-                ProcessCastaction(player, creature, S_POTION, S_LEARN_POTION, DoLearnCost(player));
+                 if (!pPlayer->HasSpell(S_POTION))
+                {
+                    pPlayer->CastSpell(pPlayer, S_LEARN_POTION, TRIGGERED_OLD_TRIGGERED);
+                }
+                pPlayer->CLOSE_GOSSIP_MENU(); 
                 break;
                 //Unlearn Alchemy
             case GOSSIP_ACTION_INFO_DEF + 4:
-                ProcessUnlearnAction(player, creature, S_UNLEARN_TRANSMUTE, 0, DoHighUnlearnCost(player));
-                break;
+                if (pPlayer->HasSpell(S_POTION))
+                {
+                //ProcessUnlearnAction(player, creature, S_UNLEARN_TRANSMUTE, 0, DoHighUnlearnCost(player));
+                    if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
+                    {   
+                        Player->CastSpell(pPlayer, S_UNLEARN_TRANSMUTE, TRIGGERED_OLD_TRIGGERED);
+                        ProfessionUnlearnSpells(pPlayer, S_UNLEARN_TRANSMUTE);
+                        pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
+                        pPlayer->CLOSE_GOSSIP_MENU();
+                    }
+                    else
+                        pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
+                }
+                else
+                {
+                    pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, nullptr, nullptr);
+                    pPlayer->CLOSE_GOSSIP_MENU();
+                }
+            break;
             case GOSSIP_ACTION_INFO_DEF + 5:
-                ProcessUnlearnAction(player, creature, S_UNLEARN_ELIXIR, 0, DoHighUnlearnCost(player));
+                //ProcessUnlearnAction(player, creature, S_UNLEARN_ELIXIR, 0, DoHighUnlearnCost(player));
+                if (pPlayer->HasSpell(S_ELIXIR))
+                {
+                    if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
+                    {   
+                        Player->CastSpell(pPlayer, S_UNLEARN_ELIXIR, TRIGGERED_OLD_TRIGGERED);
+                        ProfessionUnlearnSpells(pPlayer, S_UNLEARN_ELIXIR);
+                        pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
+                        pPlayer->CLOSE_GOSSIP_MENU();
+                    }
+                    else
+                        pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
+                }
+                else
+                {
+                    pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, nullptr, nullptr);
+                    pPlayer->CLOSE_GOSSIP_MENU();
+                }
                 break;
             case GOSSIP_ACTION_INFO_DEF + 6:
-                ProcessUnlearnAction(player, creature, S_UNLEARN_POTION, 0, DoHighUnlearnCost(player));
+                //ProcessUnlearnAction(player, creature, S_UNLEARN_POTION, 0, DoHighUnlearnCost(player));
+                if (pPlayer->HasSpell(S_POTION))
+                {
+                    if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
+                    {   
+                        Player->CastSpell(pPlayer, S_UNLEARN_POTION, TRIGGERED_OLD_TRIGGERED);
+                        ProfessionUnlearnSpells(pPlayer, S_UNLEARN_POTION);
+                        pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
+                        pPlayer->CLOSE_GOSSIP_MENU();
+                    }
+                    else
+                        pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
+                }
+                else
+                {
+                    pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, nullptr, nullptr);
+                    pPlayer->CLOSE_GOSSIP_MENU();
+                }
                 break;
         }
     }
 
-    void SendConfirmLearn(Player* player, Creature* creature, uint32 action)
+void SendConfirmLearn_npc_prof_Alchemy(Player* player, Creature* creature, uint32 action)
     {
-        if (action)
+        if (uiAction)
         {
-            switch (creature->GetEntry())
+            //uint32 eCreature = pCreature->GetEntry();
+            switch (pCreature->GetEntry())
             {
                 case N_TRAINER_TRANSMUTE:
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_TRANSMUTE, GOSSIP_SENDER_CHECK, action);
+                    pPlayer->ADD_GOSSIP_ITEM(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_TRANSMUTE, GOSSIP_SENDER_CHECK, uiAction);
                                                                 //unknown textID ()
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
                     break;
                 case N_TRAINER_ELIXIR:
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_ELIXIR,    GOSSIP_SENDER_CHECK, action);
+                    pPlayer->ADD_GOSSIP_ITEM(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_ELIXIR,    GOSSIP_SENDER_CHECK, uiAction);
                                                                 //unknown textID ()
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
                     break;
                 case N_TRAINER_POTION:
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_POTION,    GOSSIP_SENDER_CHECK, action);
+                    pPlayer->ADD_GOSSIP_ITEM(player, GOSSIP_ICON_CHAT, GOSSIP_LEARN_POTION,    GOSSIP_SENDER_CHECK, uiAction);
                                                                 //unknown textID ()
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
                     break;
             }
         }
     }
 
-    void SendConfirmUnlearn(Player* player, Creature* creature, uint32 action)
+  void SendConfirmUnlearn(Player* pPlayer, Creature* pCreature, uint32 action)
     {
-        if (action)
+        if (uiAction))
         {
-            switch (creature->GetEntry())
+            //uint32 eCreature = pCreature->GetEntry();
+            switch (pCreature->GetEntry())
             {
                 case N_TRAINER_TRANSMUTE:                                     //Zarevhi
-                    AddGossipItemFor(player, 0, GOSSIP_UNLEARN_TRANSMUTE, GOSSIP_SENDER_CHECK, action, BOX_UNLEARN_ALCHEMY_SPEC, DoHighUnlearnCost(player), false);
+                    pPlayer->ADD_GOSSIP_ITEM(0, GOSSIP_UNLEARN_TRANSMUTE, GOSSIP_SENDER_CHECK, uiAction, BOX_UNLEARN_ALCHEMY_SPEC, GetUnlearnCostLow(pPlayer), false);
                                                                 //unknown textID ()
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENUpPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
                     break;
                 case N_TRAINER_ELIXIR:                                     //Lorokeem
-                    AddGossipItemFor(player, 0, GOSSIP_UNLEARN_ELIXIR, GOSSIP_SENDER_CHECK, action,    BOX_UNLEARN_ALCHEMY_SPEC, DoHighUnlearnCost(player), false);
+                    pPlayer->ADD_GOSSIP_ITEM(0, GOSSIP_UNLEARN_ELIXIR, GOSSIP_SENDER_CHECK, uiAction,    BOX_UNLEARN_ALCHEMY_SPEC, GetUnlearnCostLow(pPlayer), false);
                                                                 //unknown textID ()
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENUpPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
                     break;
                 case N_TRAINER_POTION:                                     //Lauranna Thar'well
-                    AddGossipItemFor(player, 0, GOSSIP_UNLEARN_POTION, GOSSIP_SENDER_CHECK, action,    BOX_UNLEARN_ALCHEMY_SPEC, DoHighUnlearnCost(player), false);
+                    //AddGossipItemFor(player, 0, GOSSIP_UNLEARN_POTION, GOSSIP_SENDER_CHECK, action,    BOX_UNLEARN_ALCHEMY_SPEC, DoHighUnlearnCost(player), false);
+                    pPlayer->ADD_GOSSIP_ITEM(0, GOSSIP_UNLEARN_POTION, GOSSIP_SENDER_CHECK, uiAction,    BOX_UNLEARN_ALCHEMY_SPEC, GetUnlearnCostLow(pPlayer), false);
                                                                 //unknown textID ()
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+                    pPlayer->SEND_GOSSIP_MENUpPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
                     break;
             }
         }
@@ -902,6 +1031,12 @@ void AddSC_npc_professions()
     pNewScript->Name = "npc_prof_leather";
     pNewScript->pGossipHello =  &GossipHello_npc_prof_leather;
     pNewScript->pGossipSelect = &GossipSelect_npc_prof_leather;
+    pNewScript->RegisterSelf();
+    
+    pNewScript = new Script;
+    pNewScript->Name = "npc_prof_Alchemy";
+    pNewScript->pGossipHello =  &GossipHello_npc_prof_Alchemy;
+    pNewScript->pGossipSelect = &GossipSelect_npc_prof_Alchemy;
     pNewScript->RegisterSelf();
 
     /*pNewScript = new Script;
