@@ -433,7 +433,7 @@ void SendActionMenu_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature, uint3
                 //ProcessUnlearnAction(player, creature, S_UNLEARN_TRANSMUTE, 0, DoHighUnlearnCost(player));
                     if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
                     {   
-                        Player->CastSpell(pPlayer, S_UNLEARN_TRANSMUTE, TRIGGERED_OLD_TRIGGERED);
+                        pPlayer->CastSpell(pPlayer, S_UNLEARN_TRANSMUTE, TRIGGERED_OLD_TRIGGERED);
                         ProfessionUnlearnSpells(pPlayer, S_UNLEARN_TRANSMUTE);
                         pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
                         pPlayer->CLOSE_GOSSIP_MENU();
@@ -453,7 +453,7 @@ void SendActionMenu_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature, uint3
                 {
                     if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
                     {   
-                        Player->CastSpell(pPlayer, S_UNLEARN_ELIXIR, TRIGGERED_OLD_TRIGGERED);
+                        pPlayer->CastSpell(pPlayer, S_UNLEARN_ELIXIR, TRIGGERED_OLD_TRIGGERED);
                         ProfessionUnlearnSpells(pPlayer, S_UNLEARN_ELIXIR);
                         pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
                         pPlayer->CLOSE_GOSSIP_MENU();
@@ -473,7 +473,7 @@ void SendActionMenu_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature, uint3
                 {
                     if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
                     {   
-                        Player->CastSpell(pPlayer, S_UNLEARN_POTION, TRIGGERED_OLD_TRIGGERED);
+                        pPlayer->CastSpell(pPlayer, S_UNLEARN_POTION, TRIGGERED_OLD_TRIGGERED);
                         ProfessionUnlearnSpells(pPlayer, S_UNLEARN_POTION);
                         pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
                         pPlayer->CLOSE_GOSSIP_MENU();
