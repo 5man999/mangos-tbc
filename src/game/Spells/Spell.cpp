@@ -7147,6 +7147,14 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
             if (m_caster->getVictim() == target)
                 return false;
             break;
+	case 32014:
+		if (m_caster->getVictim() == target)
+			return false;
+		break;
+	case 31970:
+		if (m_caster->getVictim() == target)
+			return false;
+		break;	    
         case 37676:                             // Insidious Whisper
             if (m_caster->getVictim() == target) // skips tank
                 return false;
