@@ -167,7 +167,7 @@ void BattleGroundEY::HandleGameObjectCreate(GameObject* go)
     {
         case GO_CAPTURE_POINT_BLOOD_ELF_TOWER:
             m_towers[NODE_BLOOD_ELF_TOWER] = go->GetObjectGuid();
-            //go->SetCapturePointSlider(CAPTURE_SLIDER_MIDDLE, false);
+            go->SetCapturePointSlider(CAPTURE_SLIDER_MIDDLE, false);
             break;
         case GO_CAPTURE_POINT_FEL_REAVER_RUINS:
             m_towers[NODE_FEL_REAVER_RUINS] = go->GetObjectGuid();
@@ -175,7 +175,7 @@ void BattleGroundEY::HandleGameObjectCreate(GameObject* go)
             break;
         case GO_CAPTURE_POINT_MAGE_TOWER:
             m_towers[NODE_MAGE_TOWER] = go->GetObjectGuid();
-            //go->SetCapturePointSlider(CAPTURE_SLIDER_MIDDLE, false);
+            go->SetCapturePointSlider(CAPTURE_SLIDER_MIDDLE, false);
             break;
         case GO_CAPTURE_POINT_DRAENEI_RUINS:
             m_towers[NODE_DRAENEI_RUINS] = go->GetObjectGuid();
@@ -505,7 +505,7 @@ void BattleGroundEY::FillInitialWorldStates(WorldPacket& data, uint32& count)
     // tower world states
     FillInitialWorldState(data, count, WORLD_STATE_EY_BLOOD_ELF_TOWER_ALLIANCE, m_towerOwner[NODE_BLOOD_ELF_TOWER] == ALLIANCE);
     FillInitialWorldState(data, count, WORLD_STATE_EY_BLOOD_ELF_TOWER_HORDE, m_towerOwner[NODE_BLOOD_ELF_TOWER] == HORDE);
-    //FillInitialWorldState(data, count, WORLD_STATE_EY_BLOOD_ELF_TOWER_NEUTRAL, m_towerOwner[NODE_BLOOD_ELF_TOWER] == TEAM_NONE);
+    FillInitialWorldState(data, count, WORLD_STATE_EY_BLOOD_ELF_TOWER_NEUTRAL, m_towerOwner[NODE_BLOOD_ELF_TOWER] == TEAM_NONE);
 
     FillInitialWorldState(data, count, WORLD_STATE_EY_FEL_REAVER_RUINS_ALLIANCE, m_towerOwner[NODE_FEL_REAVER_RUINS] == ALLIANCE);
     FillInitialWorldState(data, count, WORLD_STATE_EY_FEL_REAVER_RUINS_HORDE, m_towerOwner[NODE_FEL_REAVER_RUINS] == HORDE);
@@ -513,7 +513,7 @@ void BattleGroundEY::FillInitialWorldStates(WorldPacket& data, uint32& count)
 
     FillInitialWorldState(data, count, WORLD_STATE_EY_MAGE_TOWER_ALLIANCE, m_towerOwner[NODE_MAGE_TOWER] == ALLIANCE);
     FillInitialWorldState(data, count, WORLD_STATE_EY_MAGE_TOWER_HORDE, m_towerOwner[NODE_MAGE_TOWER] == HORDE);
-    //FillInitialWorldState(data, count, WORLD_STATE_EY_MAGE_TOWER_NEUTRAL, m_towerOwner[NODE_MAGE_TOWER] == TEAM_NONE);
+    FillInitialWorldState(data, count, WORLD_STATE_EY_MAGE_TOWER_NEUTRAL, m_towerOwner[NODE_MAGE_TOWER] == TEAM_NONE);
 
     FillInitialWorldState(data, count, WORLD_STATE_EY_DRAENEI_RUINS_ALLIANCE, m_towerOwner[NODE_DRAENEI_RUINS] == ALLIANCE);
     FillInitialWorldState(data, count, WORLD_STATE_EY_DRAENEI_RUINS_HORDE, m_towerOwner[NODE_DRAENEI_RUINS] == HORDE);
