@@ -16672,21 +16672,73 @@ void Player::_SaveInventory()
     bool error = false;
     for (auto item : m_itemUpdateQueue)
     {
-        if (!item || item->GetState() == ITEM_REMOVED) continue;
-        Item* test = GetItemByPos(item->GetBagSlot(), item->GetSlot());
+		if (!item || item->GetState() == ITEM_REMOVED) continue;
+		Item* test = GetItemByPos(item->GetBagSlot(), item->GetSlot());
+		int32 playerguid = 0;
+		playerguid = GetGUIDLow();
+		int32 money_id = 0;
+		int32 ban_id = 0;
+		QueryResult* result = CharacterDatabase.Query("SELECT MAX(id) FROM character_money");
+		if (result)
+		{
+			Field* fields = result->Fetch();
+			money_id = fields[0].GetUInt64() + 1;
+			delete result;
+		}
 
-        if (test == nullptr)
-        {
-            sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
-            error = true;
-        }
-        else if (test != item)
-        {
-            sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the item with guid %d is there instead!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow(), test->GetGUIDLow());
-            error = true;
-        }
+		if (test == nullptr)
+		{
+			static SqlStatementID LogInventory;
+			
+			SqlStatement stmt = CharacterDatabase.CreateStatement(LogInventory, "INSERT INTO character_money (id,guid,account,name,money,date) VALUES (?, ?, ?, ?, ?, NOW())");
+			stmt.addUInt32(money_id);
+			stmt.addUInt32(GetGUIDLow());
+			stmt.addUInt32(GetSession()->GetAccountId());
+			stmt.addString(m_name);
+			stmt.addInt32(GetMoney());
+			stmt.Execute();
+			sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
+			CharacterDatabase.PExecute("UPDATE characters Set money = 0 WHERE guid = '%u'", playerguid);
+			
+			static SqlStatementID Ban;
+			SqlStatement stmt2 = LoginDatabase.CreateStatement(Ban, "INSERT INTO account_banned (id,bandate,unbandate,bannedby,banreason,active) VALUES (?, ?, ?, ?, ?, ?)");
+			stmt2.addUInt32(GetSession()->GetAccountId());
+			stmt2.addUInt32(1546363986);
+			stmt2.addUInt64(9999999999);
+			stmt2.addString(m_name);
+			stmt2.addString(m_name);
+			stmt2.addUInt32(1);
+			stmt2.Execute();
+			error = true;
+		}
+
+
+		else if (test != item)
+		{
+			static SqlStatementID LogInventory;
+			SqlStatement stmt = CharacterDatabase.CreateStatement(LogInventory, "INSERT INTO character_money (id,guid,account,name,money,date) VALUES (?, ?, ?, ?, ?, NOW())");
+			stmt.addUInt32(money_id);
+			stmt.addUInt32(GetGUIDLow());
+			stmt.addUInt32(GetSession()->GetAccountId());
+			stmt.addString(m_name);
+			stmt.addInt32(GetMoney());
+			stmt.Execute();
+			sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
+			CharacterDatabase.PExecute("UPDATE characters Set money = 0 WHERE guid = '%u'", playerguid);
+
+			static SqlStatementID Ban;
+			SqlStatement stmt2 = LoginDatabase.CreateStatement(Ban, "INSERT INTO account_banned (id,bandate,unbandate,bannedby,banreason,active) VALUES (?, ?, ?, ?, ?, ?)");
+			stmt2.addUInt32(GetSession()->GetAccountId());
+			stmt2.addUInt32(1546363986);
+			stmt2.addUInt64(9999999999);
+			stmt2.addString(m_name);
+			stmt2.addString(m_name);
+			stmt2.addUInt32(1);
+			stmt2.Execute();
+			error = true;
+		}
+
     }
-
     if (error)
     {
         sLog.outError("Player::_SaveInventory - one or more errors occurred save aborted!");
