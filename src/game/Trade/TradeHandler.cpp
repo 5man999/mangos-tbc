@@ -560,6 +560,14 @@ void WorldSession::HandleInitiateTradeOpcode(WorldPacket& recvPacket)
         SendTradeStatus(info);
         return;
     }
+    
+    if (GetPlayer()->getLevel() <= 61)
+	{
+		ChatHandler(_player).PSendSysMessage(3114);
+		info.Status = TRADE_STATUS_BUSY;
+		SendTradeStatus(info);
+		return;
+	}
 
     if (GetPlayer()->hasUnitState(UNIT_STAT_STUNNED))
     {
