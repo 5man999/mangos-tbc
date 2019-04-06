@@ -215,6 +215,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 SendPlayerNotFoundNotice(to);
                 return;
             }
+            
+            if (_player->getLevel() < 61)
+			{
+				ChatHandler(_player).PSendSysMessage(3115);
+				return;
+
+			}
 
             if (!sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHAT) && tSecurity == SEC_PLAYER && pSecurity == SEC_PLAYER)
             {
@@ -436,6 +443,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             std::string channel, msg;
             recv_data >> channel;
             recv_data >> msg;
+            
+            if (_player->getLevel() < 61)
+			{
+				ChatHandler(_player).PSendSysMessage(3116);
+				return;
+
+			}
 
             if (!processChatmessageFurtherAfterSecurityChecks(msg, lang))
                 return;
