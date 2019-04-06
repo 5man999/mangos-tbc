@@ -277,6 +277,7 @@ struct boss_archimondeAI : public ScriptedAI
 				{
 					float m_fAngle;
 					float fX, fY, fZ;
+					m_fAngle = urand(0, M_PI_F * 2);
 
 					//m_creature->SummonCreature(NPC_ANCIENT_WISP, float(urand() % 40), float(0 % 40), 0, 0, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000);
 					m_creature->GetNearPoint(m_creature, fX, fY, fZ, 200, 75.0f, m_fAngle + frand(39.30f, M_PI_F * 2));
