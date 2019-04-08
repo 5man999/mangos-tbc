@@ -216,7 +216,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 return;
             }
             
-            if (_player->getLevel() < 61)
+            if (_player->getLevel() < 62)
 			{
 				ChatHandler(_player).PSendSysMessage(3115);
 				return;
@@ -444,7 +444,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             recv_data >> channel;
             recv_data >> msg;
             
-            if (_player->getLevel() < 61)
+            if (_player->getLevel() < 62)
 			{
 				ChatHandler(_player).PSendSysMessage(3116);
 				return;
