@@ -49,14 +49,14 @@
  # spells defines
  ###*/
 
-#define S_FORTITUDE               9787
-#define S_WISDOM                 9788
-#define S_MIGHT                17040
-#define S_SALVATION                   17041
-#define S_KINGS                 17039
-#define S_ARCANE              9787
-#define S_MARKOFTHEWILD                 9788
-#define S_SPIRIT                17040
+#define S_FORTITUDE             23948
+#define S_WISDOM                25290
+#define S_MIGHT               	25291
+#define S_SALVATION             1038
+#define S_KINGS                 20217
+#define S_ARCANE              	16876
+#define S_MARKOFTHEWILD         9885
+#define S_SPIRIT                27841
 
  /* Buff NPC */
 #define N_BUFFNPC     98000 
