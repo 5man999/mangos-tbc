@@ -116,11 +116,12 @@ bool GossipHello_npc_buffs(Player* pPlayer, Creature* pCreature)
 			case N_TRAINER_TRANSMUTE:                                //Zarevhi
 					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_FORTITUDE, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 1);
 					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_WISDOM, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 2);
-          pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_SALVATION, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 3);
-					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_KINGS, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 4);
-          pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_ARCANE, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 5);
-					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_MARKOFTHEWILD, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 6);
-          pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_SPIRIT, GOSSIP_SENDER_ULEARN, GOSSIP_ACTION_INFO_DEF + 7);
+          				pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_MIGHT, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 3);
+					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_SALVATION, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 4);
+          				pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_KINGS, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 5);
+					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_ARCANE, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 6);
+          				pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_MARKOFTHEWILD, GOSSIP_SENDER_ULEARN, GOSSIP_ACTION_INFO_DEF + 7);
+					pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_SPIRIT, GOSSIP_SENDER_ULEARN, GOSSIP_ACTION_INFO_DEF + 8);
 				break;
 			}
 	}
@@ -140,86 +141,36 @@ void SendActionMenu_npc_buffs(Player* pPlayer, Creature* pCreature, uint32 uiAct
 		break;
 		//Casted spells
 	case GOSSIP_ACTION_INFO_DEF + 1:
-		if (!pPlayer->HasSpell(S_TRANSMUTE))
-		{
-			pPlayer->CastSpell(pPlayer, S_LEARN_TRANSMUTE, TRIGGERED_OLD_TRIGGERED);
-		}
+		pPlayer->CastSpell(pPlayer, S_FORTITUDE, TRIGGERED_OLD_TRIGGERED);
 		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
 	case GOSSIP_ACTION_INFO_DEF + 2:
-		if (!pPlayer->HasSpell(S_ELIXIR))
-		{
-			pPlayer->CastSpell(pPlayer, S_LEARN_ELIXIR, TRIGGERED_OLD_TRIGGERED);
-		}
+		pPlayer->CastSpell(pPlayer, S_WISDOM, TRIGGERED_OLD_TRIGGERED);
 		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
 	case GOSSIP_ACTION_INFO_DEF + 3:
-		if (!pPlayer->HasSpell(S_POTION))
-		{
-			pPlayer->CastSpell(pPlayer, S_LEARN_POTION, TRIGGERED_OLD_TRIGGERED);
-		}
+		Player->CastSpell(pPlayer, S_MIGHT, TRIGGERED_OLD_TRIGGERED);
 		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
-		//Unlearn Alchemy
 	case GOSSIP_ACTION_INFO_DEF + 4:
-		if (pPlayer->HasSpell(S_POTION))
-		{
-			//ProcessUnlearnAction(player, creature, S_UNLEARN_TRANSMUTE, 0, DoHighUnlearnCost(player));
-			if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
-			{
-				pPlayer->CastSpell(pPlayer, S_UNLEARN_TRANSMUTE, TRIGGERED_OLD_TRIGGERED);
-				ProfessionUnlearnSpells(pPlayer, S_UNLEARN_TRANSMUTE);
-				pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
-				pPlayer->CLOSE_GOSSIP_MENU();
-			}
-			else
-				pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
-		}
-		else
-		{
-			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, nullptr, nullptr);
-			pPlayer->CLOSE_GOSSIP_MENU();
-		}
+		pPlayer->CastSpell(pPlayer, S_SALVATION, TRIGGERED_OLD_TRIGGERED);
+		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
 	case GOSSIP_ACTION_INFO_DEF + 5:
-		//ProcessUnlearnAction(player, creature, S_UNLEARN_ELIXIR, 0, DoHighUnlearnCost(player));
-		if (pPlayer->HasSpell(S_ELIXIR))
-		{
-			if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
-			{
-				pPlayer->CastSpell(pPlayer, S_UNLEARN_ELIXIR, TRIGGERED_OLD_TRIGGERED);
-				ProfessionUnlearnSpells(pPlayer, S_UNLEARN_ELIXIR);
-				pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
-				pPlayer->CLOSE_GOSSIP_MENU();
-			}
-			else
-				pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
-		}
-		else
-		{
-			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, nullptr, nullptr);
-			pPlayer->CLOSE_GOSSIP_MENU();
-		}
+		pPlayer->CastSpell(pPlayer, S_KINGS, TRIGGERED_OLD_TRIGGERED);
+		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
 	case GOSSIP_ACTION_INFO_DEF + 6:
-		//ProcessUnlearnAction(player, creature, S_UNLEARN_POTION, 0, DoHighUnlearnCost(player));
-		if (pPlayer->HasSpell(S_POTION))
-		{
-			if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
-			{
-				pPlayer->CastSpell(pPlayer, S_UNLEARN_POTION, TRIGGERED_OLD_TRIGGERED);
-				ProfessionUnlearnSpells(pPlayer, S_UNLEARN_POTION);
-				pPlayer->ModifyMoney(-GetUnlearnCostLow(pPlayer));
-				pPlayer->CLOSE_GOSSIP_MENU();
-			}
-			else
-				pPlayer->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, pCreature, 0, 0);
-		}
-		else
-		{
-			pPlayer->SendEquipError(EQUIP_ERR_CANT_DO_RIGHT_NOW, nullptr, nullptr);
-			pPlayer->CLOSE_GOSSIP_MENU();
-		}
+		pPlayer->CastSpell(pPlayer, S_ARCANE, TRIGGERED_OLD_TRIGGERED);
+		pPlayer->CLOSE_GOSSIP_MENU();
+		break;
+	case GOSSIP_ACTION_INFO_DEF + 7:
+		pPlayer->CastSpell(pPlayer, S_MARKOFTHEWILD, TRIGGERED_OLD_TRIGGERED);
+		pPlayer->CLOSE_GOSSIP_MENU();
+		break;
+	case GOSSIP_ACTION_INFO_DEF + 8:
+		pPlayer->CastSpell(pPlayer, S_SPIRIT, TRIGGERED_OLD_TRIGGERED);
+		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
 	}
 }
