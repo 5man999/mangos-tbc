@@ -1083,6 +1083,8 @@ bool Creature::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo cons
 		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
 	if (GetEntry() == 71033)
 		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 98000)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
 
     // Add to CreatureLinkingHolder if needed
     if (sCreatureLinkingMgr.GetLinkedTriggerInformation(this))
