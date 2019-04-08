@@ -199,7 +199,6 @@ bool GossipSelect_npc_buffs(Player* pPlayer, Creature* pCreature, uint32 uiSende
 	{
 	case GOSSIP_SENDER_MAIN:    SendActionMenu_npc_buffs(pPlayer, pCreature, uiAction); break;
 	case GOSSIP_SENDER_LEARN:   SendConfirmLearn_npc_buffs(pPlayer, pCreature, uiAction); break;
-	case GOSSIP_SENDER_UNLEARN: SendConfirmUnlearn_npc_buffs(pPlayer, pCreature, uiAction); break;
 	case GOSSIP_SENDER_CHECK:   SendActionMenu_npc_buffs(pPlayer, pCreature, uiAction); break;
 	}
 	return true;
