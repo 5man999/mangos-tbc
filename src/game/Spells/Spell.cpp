@@ -7147,6 +7147,18 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
             if (m_caster->getVictim() == target)
                 return false;
             break;
+	case 32375: //mass dispell
+	{
+		target->RemoveAurasDueToSpell(45438);
+		target->RemoveAurasDueToSpell(10278);
+		target->RemoveAurasDueToSpell(5599);
+		target->RemoveAurasDueToSpell(1022);
+		target->RemoveAurasDueToSpell(642);
+		target->RemoveAurasDueToSpell(1020);
+		target->RemoveAurasDueToSpell(5573);
+		target->RemoveAurasDueToSpell(498);
+		break;
+	}
 	case 32014:
 		if (m_caster->getVictim() == target)
 			return false;
