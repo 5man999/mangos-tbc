@@ -296,14 +296,15 @@ struct boss_archimondeAI : public ScriptedAI
 		{
 			if (m_uiEnrageTimer <= uiDiff)
 			{
-				if (DoCastSpellIfCan(m_creature, SPELL_HAND_OF_DEATH) == CAST_OK)
+				if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
 				{
+					DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
 					DoScriptText(SAY_ENRAGE, m_creature);
 					m_uiEnrageTimer = 0;
 				}
+				else
+					m_uiEnrageTimer -= uiDiff;
 			}
-			else
-				m_uiEnrageTimer -= uiDiff;
 		}
 
 		if (m_uiGripOfTheLegionTimer < uiDiff)
