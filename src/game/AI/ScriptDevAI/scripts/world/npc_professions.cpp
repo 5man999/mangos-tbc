@@ -178,14 +178,18 @@
 #define Q_MASTER_ELIXIR         10902
 #define Q_MASTER_POTION         10897
 
-#define GOSSIP_CAST_FORTITUDE         "I wish to have the Fortitude buff"
-#define GOSSIP_CAST_WISDOM       "I wish to have the Wisdom buff"
-#define GOSSIP_CAST_MIGHT      "I wish to have the Might buff"
-#define GOSSIP_CAST_SALVATION    "I wish to have the Salvation buff"
-#define GOSSIP_CAST_KINGS       "I wish to have the Kings buff"
-#define GOSSIP_CAST_ARCANE       "I wish to have the Arcane Intellect buff"
-#define GOSSIP_CAST_MARKOFTHEWILD       "I wish to have the Mark of The Wild buff"
-#define GOSSIP_CAST_SPIRIT       "I wish to have the Spirit buff"
+#define GOSSIP_CAST_FORTITUDE         "Empower my group with Fortitude"
+#define GOSSIP_CAST_WISDOM       "Empower my group with Wisdom"
+#define GOSSIP_CAST_MIGHT      "Empower my group with Might"
+#define GOSSIP_CAST_SALVATION    "Empower my group with Salvation"
+#define GOSSIP_CAST_KINGS       "Empower my group with Kings"
+#define GOSSIP_CAST_ARCANE       "Empower my group with Arcane Intellect"
+#define GOSSIP_CAST_MARKOFTHEWILD       "Empower my group with Mark of The Wild"
+#define GOSSIP_CAST_SPIRIT       "Empower my group with Spirit"
+//#define GOSSIP_CAST_Single_WISDOM      "I wish to be empowered with Wisdom"     
+//#define GOSSIP_CAST_Single_MIGHT       "I wish to be empowered with Might"    
+//#define GOSSIP_CAST_Single_SALVATION   "I wish to be empowered with Salvation"    
+//#define GOSSIP_CAST_Single_KINGS    "I wish to be empowered with Kings"
 
  /*###
  # spells defines
@@ -199,6 +203,11 @@
 #define S_ARCANE              	23028
 #define S_MARKOFTHEWILD         21850
 #define S_SPIRIT                27681
+//#define Single_WISDOM           25290
+//#define Single_MIGHT            25291
+//#define Single_SALVATION        1038
+//#define Single_KINGS            20217
+
 
  /* Buff NPC */
 #define N_BUFFNPC     60003 
@@ -230,6 +239,10 @@ bool GossipHello_npc_buffs(Player* pPlayer, Creature* pCreature)
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_ARCANE, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 6);
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_MARKOFTHEWILD, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 7);
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_SPIRIT, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 8);
+			//pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_WISDOM, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 9);
+			//pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_MIGHT, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 10);
+			//pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_SALVATION, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 11);
+			//pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_KINGS, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 12);
 			break;
 		}
 	}
@@ -280,6 +293,22 @@ void SendActionMenu_npc_buffs(Player* pPlayer, Creature* pCreature, uint32 uiAct
 		pPlayer->CastSpell(pPlayer, S_SPIRIT, TRIGGERED_OLD_TRIGGERED);
 		pPlayer->CLOSE_GOSSIP_MENU();
 		break;
+	//case GOSSIP_ACTION_INFO_DEF + 9:
+	//	pPlayer->CastSpell(pPlayer, Single_WISDOM, TRIGGERED_OLD_TRIGGERED);
+	//	pPlayer->CLOSE_GOSSIP_MENU();
+	//	break;
+	//case GOSSIP_ACTION_INFO_DEF + 10:
+	//	pPlayer->CastSpell(pPlayer, Single_MIGHT, TRIGGERED_OLD_TRIGGERED);
+	//	pPlayer->CLOSE_GOSSIP_MENU();
+	//	break;
+	//case GOSSIP_ACTION_INFO_DEF + 11:
+	//	pPlayer->CastSpell(pPlayer, Single_SALVATION, TRIGGERED_OLD_TRIGGERED);
+	//	pPlayer->CLOSE_GOSSIP_MENU();
+	//	break;
+	//case GOSSIP_ACTION_INFO_DEF + 12:
+	//	pPlayer->CastSpell(pPlayer, Single_KINGS, TRIGGERED_OLD_TRIGGERED);
+	//	pPlayer->CLOSE_GOSSIP_MENU();
+	//	break;
 	}
 }
 
@@ -299,6 +328,10 @@ void SendConfirmLearn_npc_buffs(Player* pPlayer, Creature* pCreature, uint32 uiA
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_ARCANE, GOSSIP_SENDER_CHECK, uiAction);
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_MARKOFTHEWILD, GOSSIP_SENDER_CHECK, uiAction);
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_SPIRIT, GOSSIP_SENDER_CHECK, uiAction);
+		//	pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_WISDOM, GOSSIP_SENDER_CHECK, uiAction);
+		//	pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_MIGHT, GOSSIP_SENDER_CHECK, uiAction);
+		//	pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_SALVATION, GOSSIP_SENDER_CHECK, uiAction);
+		//	pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_Single_KINGS, GOSSIP_SENDER_CHECK, uiAction);
 			//unknown textID ()
 			pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
 			break;
