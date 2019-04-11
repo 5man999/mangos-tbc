@@ -18950,6 +18950,8 @@ void Player::CFLeaveBattleGround()
 
     FixLanguageSkills(true, true);
 
+    RemoveAurasDueToSpell(20584);
+
     SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
     setFaction(getOFaction());
     InitDisplayIds();
