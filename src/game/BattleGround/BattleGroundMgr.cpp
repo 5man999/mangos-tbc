@@ -2398,4 +2398,5 @@ bool BattleGroundQueue::MixPlayersToBG(BattleGround* bg, BattleGroundBracketId b
 				break;
 		}
 	}
+	return true;
 }
