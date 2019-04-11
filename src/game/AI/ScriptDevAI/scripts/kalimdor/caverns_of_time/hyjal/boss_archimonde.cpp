@@ -363,12 +363,15 @@ struct boss_archimondeAI : public ScriptedAI
 		//	DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), SPELL_FINGER_OF_DEATH);
 		//	events.ScheduleEvent(EVENT_FINGER_OF_DEATH, 1000);
 		//}
-		else if (!(m_creature->IsNonMeleeSpellCasted(false) && m_creature->CanReachWithMeleeAttack(m_creature->getVictim()) && m_creature->ReachWithSpellAttack(m_creature->getVictim())))
+		else if(Unit* victim = m_creature->getVictim())
 		{
-			//if (!m_creature->IsNonMeleeSpellCasted(false) || m_creature->Inmeleerange(true))
+			if (!(m_creature->IsNonMeleeSpellCasted(false) && m_creature->CanReachWithMeleeAttack(m_creature->getVictim()) && m_creature->ReachWithSpellAttack(m_creature->getVictim())))
 			{
-				if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
-					DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
+				if (!(m_creature->CanReachWithMeleeAttack(m_creature->getVictim()) && m_creature->ReachWithSpellAttack(m_creature->getVictim())))
+				{
+					if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+						DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
+				}
 			}
 		}
 	}
