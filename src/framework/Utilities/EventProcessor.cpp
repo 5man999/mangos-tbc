@@ -17,17 +17,27 @@
  */
 
 #include "EventProcessor.h"
+#include "Errors.h"
 
-EventProcessor::EventProcessor()
+void BasicEvent::ScheduleAbort()
 {
-    m_time = 0;
-    m_aborting = false;
+	if(IsRunning()
+		&& "Tried to scheduled the abortion of an event twice!");
+	m_abortState = AbortState::STATE_ABORT_SCHEDULED;
+}
+
+void BasicEvent::SetAborted()
+{
+	if(!IsAborted()
+		&& "Tried to abort an already aborted event!");
+	m_abortState = AbortState::STATE_ABORTED;
 }
 
 EventProcessor::~EventProcessor()
 {
-    KillAllEvents(true);
+	KillAllEvents(true);
 }
+
 
 void EventProcessor::Update(uint32 p_time)
 {
@@ -42,19 +52,32 @@ void EventProcessor::Update(uint32 p_time)
         BasicEvent* Event = i->second;
         m_events.erase(i);
 
-        if (!Event->to_Abort)
-        {
-            if (Event->Execute(m_time, p_time))
-            {
-                // completely destroy event if it is not re-added
-                delete Event;
-            }
-        }
-        else
-        {
-            Event->Abort(m_time);
-            delete Event;
-        }
+		if (Event->IsRunning())
+		{
+			if (Event->Execute(m_time, p_time))
+			{
+				// completely destroy event if it is not re-added
+				delete Event;
+			}
+			continue;
+		}
+
+		if (Event->IsAbortScheduled())
+		{
+			Event->Abort(m_time);
+			// Mark the event as aborted
+			Event->SetAborted();
+		}
+
+		if (Event->IsDeletable())
+		{
+			delete Event;
+			continue;
+		}
+
+		// Reschedule non deletable events to be checked at
+		// the next update tick
+		AddEvent(Event, CalculateTime(1), false);
     }
 }
 
@@ -66,18 +89,26 @@ void EventProcessor::KillAllEvents(bool force)
     // first, abort all existing events
     for (EventList::iterator i = m_events.begin(); i != m_events.end();)
     {
-        EventList::iterator i_old = i;
-        ++i;
+		if (!i->second->IsAborted())
+		{
+			i->second->SetAborted();
+			i->second->Abort(m_time);
+		}
 
-        i_old->second->to_Abort = true;
-        i_old->second->Abort(m_time);
-        if (force || i_old->second->IsDeletable())
-        {
-            delete i_old->second;
+		// Skip non-deletable events when we are
+		// not forcing the event cancellation.
+		if (!force && !i->second->IsDeletable())
+		{
+			++i;
+			continue;
+		}
 
-            if (!force)                                     // need per-element cleanup
-                m_events.erase(i_old);
-        }
+		delete i->second;
+
+		if (force)
+			++i; // Clear the whole container when forcing
+		else
+			i = m_events.erase(i);
     }
 
     // fast clear event list (in force case)
