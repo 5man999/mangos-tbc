@@ -420,6 +420,8 @@ Unit::~Unit()
             m_currentSpell = nullptr;
         }
     }
+    
+	m_events.KillAllEvents(true);
 
     CleanupDeletedAuras();
 
