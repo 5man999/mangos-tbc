@@ -103,7 +103,9 @@ struct boss_archimondeAI : public ScriptedAI
     uint32 m_uiSummonWispTimer;
     uint32 m_uiWispCount;
     uint32 m_uiEnrageTimer;
-	ObjectGuid DoomfireSpiritGUID;
+    int32 m_iFingerMelee;
+	
+    ObjectGuid DoomfireSpiritGUID;
 
     bool m_bHasIntro;
     bool m_bIsEnraged;
@@ -120,6 +122,7 @@ struct boss_archimondeAI : public ScriptedAI
         m_uiFingerOfDeathTimer   = 15000;
         m_uiHandOfDeathTimer     = 2000;
         m_uiWispCount            = 0;
+	m_iFingerMelee		 = -1;
         m_uiEnrageTimer          = 10 * MINUTE * IN_MILLISECONDS;
 
         m_bIsEnraged             = false;
@@ -353,24 +356,35 @@ struct boss_archimondeAI : public ScriptedAI
 			m_uiDoomfireTimer -= uiDiff;
 
 		// If we are within range melee the target
-
-		if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
-			DoMeleeAttackIfReady();
-		// Else spam Finger of Death
-
-		//if (!SelectTarget(Select, 0, 5.0f)) // Checks if there are no targets in melee range
-		//{
-		//	DoCast(SelectTarget(SELECT_TARGET_RANDOM, 0), SPELL_FINGER_OF_DEATH);
-		//	events.ScheduleEvent(EVENT_FINGER_OF_DEATH, 1000);
-		//}
-		else if(Unit* victim = m_creature->getVictim())
+		if (Unit* victim = m_creature->getVictim())
 		{
-			if (!(m_creature->IsNonMeleeSpellCasted(false) && m_creature->CanReachWithMeleeAttack(m_creature->getVictim()) && m_creature->ReachWithSpellAttack(m_creature->getVictim())))
+			if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
 			{
-				if (!(m_creature->CanReachWithMeleeAttack(m_creature->getVictim()) && m_creature->ReachWithSpellAttack(m_creature->getVictim())))
+				m_iFingerMelee = -1;
+				DoMeleeAttackIfReady();
+			}
+
+
+			else
+			{
+				if (!m_creature->IsNonMeleeSpellCasted(false))
 				{
-					if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
-						DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
+					if (m_iFingerMelee == -1) // if timer not started, start it
+						m_iFingerMelee = 3000;
+					else if (m_iFingerMelee > 0) // if timer not ended, decrease
+					{
+						if ((uint32)m_iFingerMelee <= uiDiff)
+							m_iFingerMelee = 0;
+						else
+							m_iFingerMelee -= uiDiff;
+					}
+
+					else
+					{
+						if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+							DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
+
+					}
 				}
 			}
 		}
@@ -378,6 +392,7 @@ struct boss_archimondeAI : public ScriptedAI
 		
     
 };
+
 
 /* This is the script for the Doomfire Spirit Mob. This mob controls the doomfire npc and allows it to move randomly around the map. */
 struct npc_doomfire_spiritAI : public ScriptedAI
