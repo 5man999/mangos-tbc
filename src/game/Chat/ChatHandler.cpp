@@ -168,7 +168,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             if (msg.empty())
                 break;
+	    
+            if (_player->getLevel() < 62)
+			{
+				ChatHandler(_player).PSendSysMessage(3115);
+				return;
 
+			}
             if (ChatHandler(this).ParseCommands(msg.c_str()))
                 break;
 
