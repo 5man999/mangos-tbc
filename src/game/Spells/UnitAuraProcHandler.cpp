@@ -1339,7 +1339,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 {
                     if (!pVictim || !pVictim->isAlive())
                         return SPELL_AURA_PROC_FAILED;
-
+		    Map* _map = pVictim->GetMap();
                     // pVictim is caster of aura
                     if (triggeredByAura->GetCasterGuid() != pVictim->GetObjectGuid())
                         return SPELL_AURA_PROC_FAILED;
