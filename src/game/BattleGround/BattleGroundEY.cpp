@@ -118,12 +118,12 @@ void BattleGroundEY::EndBattleGround(Team winner)
 {
     // win reward
     if (winner == ALLIANCE)
-        RewardHonorToTeam(GetBonusHonorFromKill(1), ALLIANCE);
+        RewardHonorToTeam(GetBonusHonorFromKill(2), ALLIANCE);
     if (winner == HORDE)
-        RewardHonorToTeam(GetBonusHonorFromKill(1), HORDE);
+        RewardHonorToTeam(GetBonusHonorFromKill(2), HORDE);
     // complete map reward
-    RewardHonorToTeam(GetBonusHonorFromKill(1), ALLIANCE);
-    RewardHonorToTeam(GetBonusHonorFromKill(1), HORDE);
+    RewardHonorToTeam(GetBonusHonorFromKill(2), ALLIANCE);
+    RewardHonorToTeam(GetBonusHonorFromKill(2), HORDE);
 
     // disable capture points
     for (auto m_tower : m_towers)
