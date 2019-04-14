@@ -1345,7 +1345,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         return SPELL_AURA_PROC_FAILED;
 
                     // heal amount
-                    basepoints[0] = triggerAmount * damage / 100;
+                    basepoints[0] = triggerAmount * damage / 200;
                     pVictim->CastCustomSpell(pVictim, 15290, &basepoints[0], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, castItem, triggeredByAura);
                     return SPELL_AURA_PROC_OK;              // no hidden cooldown
                 }
