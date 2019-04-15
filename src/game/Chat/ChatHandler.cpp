@@ -169,12 +169,6 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             if (msg.empty())
                 break;
 	    
-            if (_player->getLevel() < 62)
-			{
-				ChatHandler(_player).PSendSysMessage(3115);
-				return;
-
-			}
             if (ChatHandler(this).ParseCommands(msg.c_str()))
                 break;
 
@@ -184,12 +178,19 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             if (msg.empty())
                 break;
 
+            
             if (type == CHAT_MSG_SAY)
                 GetPlayer()->Say(msg, lang);
             else if (type == CHAT_MSG_EMOTE)
                 GetPlayer()->TextEmote(msg);
             else if (type == CHAT_MSG_YELL)
-                GetPlayer()->Yell(msg, lang);
+		if (_player->getLevel() >= 61)
+		{
+			GetPlayer()->Yell(msg, lang);
+
+		}
+		else
+			ChatHandler(_player).PSendSysMessage(3116);
         } break;
 
         case CHAT_MSG_WHISPER:
