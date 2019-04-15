@@ -1357,7 +1357,7 @@ void Player::Update(const uint32 diff)
 	{
 				if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
 				{
-					RemoveAllAuras();
+					RemoveArenaAuras();
 					m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
 					CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
 					//RemoveAura(SPELL_AURA_FLY);
