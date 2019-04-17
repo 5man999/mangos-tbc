@@ -1351,20 +1351,17 @@ void Player::Update(const uint32 diff)
     if (!IsInWorld())
         return;
     uint32 Areamap;
-	Areamap = GetAreaId();
-	ObjectGuid m_capturePoint;
-	if (Areamap == 3628)
+    if (Areamap == 3628)
+    {
+	if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
 	{
-				if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
-				{
-					RemoveArenaAuras();
-					m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
-					CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
-					//RemoveAura(SPELL_AURA_FLY);
-					//RemoveAurasDueToSpell
-				}
-		
+		RemoveSpellsCausingAura(SPELL_AURA_FLY);
+		RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
+		m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
+		CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
 	}
+    }
+
     // Undelivered mail
     if (m_nextMailDelivereTime && m_nextMailDelivereTime <= time(nullptr))
     {
