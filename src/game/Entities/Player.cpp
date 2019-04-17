@@ -1350,7 +1350,7 @@ void Player::Update(const uint32 diff)
 {
     if (!IsInWorld())
         return;
-    uint32 Areamap;
+    uint32 Areamap = GetAreaId();
     if (Areamap == 3628)
     {
 	if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
