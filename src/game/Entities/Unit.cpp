@@ -9226,6 +9226,13 @@ bool Unit::IsOfflineTarget(Unit* victim) const
 
 bool Unit::IsLeashingTarget(Unit* victim) const
 {
+	uint32 map = GetMapId();
+	uint32 targetid = static_cast<Creature const*>(this)->GetGUIDLow();
+	if (!(targetid == 5480040 || targetid == 5342001 || targetid == 5343001 || targetid == 5320644 || targetid == 5320143))
+	{
+		if (map == 548 || map == 565 || map == 568 || map == 534 || map == 532 || map == 550 || map == 544)
+			return false;
+	}
     float AttackDist = GetAttackDistance(victim);
     float ThreatRadius = sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS);
     float x, y, z, ori;
