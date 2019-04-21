@@ -1910,6 +1910,8 @@ class Player : public Unit
         PlayerMenu* PlayerTalkClass;
         std::vector<ItemSetEffect*> ItemSetEff;
 
+		void CrossTradeEnable();
+		void CrossTradeDisable();
         /*********************************************************/
         /***               BATTLEGROUND SYSTEM                 ***/
         /*********************************************************/
