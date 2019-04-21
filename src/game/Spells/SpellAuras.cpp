@@ -2330,6 +2330,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             // not use ammo and not allow use
                             ((Player*)target)->RemoveAmmo();
                         return;
+					case 46021:
+					{
+						Player* player = GetCaster()->GetBeneficiaryPlayer();
+						player->CrossTradeEnable();
+						return;
+					}
                 }
                 break;
             }
@@ -2687,19 +2693,26 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             case 46738:
             case 46739:
             case 46740:
-            {
-                uint32 spellId = 0;
-                switch (urand(0,5))
-                {
-                    case 0: spellId = 46736; break;
-                    case 1: spellId = 46738; break;
-                    case 2: spellId = 46739; break;
-                    case 3: spellId = 46740; break;
-                    case 4: return;
-                }
-                target->CastSpell(target, spellId, TRIGGERED_OLD_TRIGGERED);
-                break;
-            }
+			{
+				uint32 spellId = 0;
+				switch (urand(0, 5))
+				{
+				case 0: spellId = 46736; break;
+				case 1: spellId = 46738; break;
+				case 2: spellId = 46739; break;
+				case 3: spellId = 46740; break;
+				case 4: return;
+				}
+				target->CastSpell(target, spellId, TRIGGERED_OLD_TRIGGERED);
+				break;
+			}
+			case 46021:
+			{
+				Player* player = GetCaster()->GetBeneficiaryPlayer();
+				player->CrossTradeDisable();
+				return;
+			}
+            
         }
     }
 
