@@ -46,6 +46,8 @@
 #define TALK_HAMMER_UNLEARN         "Forgetting your Hammersmithing skill is not something to do lightly. If you choose to abandon it you will forget all recipes that require Hammersmithing to create!"
 #define TALK_AXE_UNLEARN            "Forgetting your Axesmithing skill is not something to do lightly. If you choose to abandon it you will forget all recipes that require Axesmithing to create!"
 #define TALK_SWORD_UNLEARN          "Forgetting your Swordsmithing skill is not something to do lightly. If you choose to abandon it you will forget all recipes that require Swordsmithing to create!"
+#define TALK_TRADE                  "What are you looking at $N! ...$B$BI know what you're thinking, how did I end up like this.  You really want to know? Ha....ha...$B$B<coughs wildly>$B$BDo you know what it's like to die? Not the kind of death you're used to..no, the kind that you heros have forgotten even existed.$B$B<Topper stares at you intensely>$B$BI was once classified as clinically dead, but I came back....Take my hand and I'll show you a glimpse of what I saw$B$B<Topper laughs hysterically>$B$B"
+
 
  /*###
  # generic defines
@@ -58,6 +60,8 @@
  /*###
  # gossip item and box texts
  ###*/
+
+#define GOSSIP_TRADE                "<Grab Topper's Hand>"
 
 #define GOSSIP_LEARN_POTION         "Please teach me how to become a Master of Potions, Lauranna"
 #define GOSSIP_UNLEARN_POTION       "I wish to unlearn Potion Mastery"
@@ -102,6 +106,7 @@
  # spells defines
  ###*/
 
+#define S_TRADE                 46021
 #define S_WEAPON                9787
 #define S_ARMOR                 9788
 #define S_HAMMER                17040
@@ -169,6 +174,7 @@
 #define N_TRAINER_ELIXIR        19052 // Lorokeem
 #define N_TRAINER_POTION        17909 // Lauranna Thar'well
 
+
 /*###
 # specialization quests
 ###*/
@@ -212,9 +218,69 @@
  /* Buff NPC */
 #define N_BUFFNPC     60003 
 
+#define N_TRADE		  1402
+
 /*###
 # formulas to calculate buff cost
 ###*/
+bool GossipHello_npc_trade(Player* pPlayer, Creature* pCreature)
+{
+	uint32 eCreature = pCreature->GetEntry();
+
+	switch (eCreature)
+	{
+		case N_TRADE:
+			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TRADE, GOSSIP_SENDER_LEARN, GOSSIP_ACTION_INFO_DEF + 1);
+			break;
+	}
+
+	pPlayer->SEND_GOSSIP_MENU(21000, pCreature->GetObjectGuid());
+	return true;
+}
+void SendActionMenu_npc_trade(Player* pPlayer, Creature* pCreature, uint32 uiAction)
+{
+	switch (uiAction)
+	{
+	case GOSSIP_ACTION_TRADE:
+		pPlayer->SEND_VENDORLIST(pCreature->GetObjectGuid());
+		break;
+	case GOSSIP_ACTION_TRAIN:
+		pPlayer->SEND_TRAINERLIST(pCreature->GetObjectGuid());
+		break;
+		//Casted spells
+	case GOSSIP_ACTION_INFO_DEF + 1:
+		pPlayer->CastSpell(pPlayer, S_TRADE, TRIGGERED_OLD_TRIGGERED);
+		pPlayer->CLOSE_GOSSIP_MENU();
+		break;
+	}
+}
+
+void SendConfirmLearn_npc_trade(Player* pPlayer, Creature* pCreature, uint32 uiAction)
+{
+	if (uiAction)
+	{
+		uint32 eCreature = pCreature->GetEntry();
+		switch (eCreature)
+		{
+		case N_TRADE:
+			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_TRADE, GOSSIP_SENDER_CHECK, uiAction);
+			pPlayer->SEND_GOSSIP_MENU(21000, pCreature->GetObjectGuid());
+			break;
+		}
+	}
+}
+
+
+bool GossipSelect_npc_trade(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
+{
+		switch (uiSender)
+		{
+		case GOSSIP_SENDER_MAIN:    SendActionMenu_npc_trade(pPlayer, pCreature, uiAction); break;
+		case GOSSIP_SENDER_LEARN:   SendConfirmLearn_npc_trade(pPlayer, pCreature, uiAction); break;
+		case GOSSIP_SENDER_CHECK:   SendActionMenu_npc_trade(pPlayer, pCreature, uiAction); break;
+		}
+		return true;
+}
 
 bool GossipHello_npc_buffs(Player* pPlayer, Creature* pCreature)
 {
@@ -316,8 +382,8 @@ void SendConfirmLearn_npc_buffs(Player* pPlayer, Creature* pCreature, uint32 uiA
 {
 	if (uiAction)
 	{
-		//uint32 eCreature = pCreature->GetEntry();
-		switch (pCreature->GetEntry())
+		uint32 eCreature = pCreature->GetEntry();
+		switch (eCreature)
 		{
 		case N_BUFFNPC:
 			pPlayer->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_CAST_FORTITUDE, GOSSIP_SENDER_CHECK, uiAction);
@@ -1187,6 +1253,12 @@ void AddSC_npc_professions()
 	pNewScript->Name = "npc_buffs";
 	pNewScript->pGossipHello = &GossipHello_npc_buffs;
 	pNewScript->pGossipSelect = &GossipSelect_npc_buffs;
+	pNewScript->RegisterSelf();
+
+	pNewScript = new Script;
+	pNewScript->Name = "npc_trade";
+	pNewScript->pGossipHello = &GossipHello_npc_trade;
+	pNewScript->pGossipSelect = &GossipSelect_npc_trade;
 	pNewScript->RegisterSelf();
 
 	
