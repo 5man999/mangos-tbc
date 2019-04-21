@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the CMaNGOS Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1351,15 +1351,20 @@ void Player::Update(const uint32 diff)
     if (!IsInWorld())
         return;
     uint32 Areamap = GetAreaId();
-    if (Areamap == 3628)
+    if (Areamap == 3628) //Halaa
     {
-	if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
-	{
-		RemoveSpellsCausingAura(SPELL_AURA_FLY);
-		RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
-		m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
-		CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
-	}
+		QueryResult* result = CharacterDatabase.Query("SELECT * FROM game_event_status WHERE event = 16");
+		if (result)
+		{
+			if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
+			{
+				RemoveSpellsCausingAura(SPELL_AURA_FLY);
+				RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
+				m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
+				CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
+			}
+		delete result;
+		}
     }
 
     // Undelivered mail
@@ -18840,6 +18845,74 @@ void Player::CorrectMetaGemEnchants(uint8 exceptslot, bool apply)
             }
         }
     }
+}
+
+void Player::CrossTradeDisable()
+{
+	if (!(getOFaction() == getFaction()))
+	{
+		SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
+		setFaction(getOFaction());
+		InitDisplayIds();
+		FixLanguageSkills(true, true);
+		setFactionForRace(getRace());
+		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+
+	}
+	RemoveSpellsCausingAura(SPELL_AURA_FLY);
+	RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
+	RemoveSpellsCausingAura(SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED);
+	RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+	RemoveSpellsCausingAura(SPELL_AURA_MOD_MOUNTED_SPEED_ALWAYS);
+	m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
+}
+
+void Player::CrossTradeEnable()
+{
+	if (!(m_oFaction == 1))
+	{
+		SetByteValue(UNIT_FIELD_BYTES_0, 0, 1);
+		setFaction(1);
+		FixLanguageSkills();
+
+		PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
+		if (!info)
+		{
+			for (int i = 1; i <= CLASS_DRUID; i++)
+			{
+				info = sObjectMgr.GetPlayerInfo(getRace(), i);
+				if (info)
+					break;
+			}
+		}
+
+		if (!info)
+		{
+			sLog.outError("Player %u has incorrect race/class pair. Can't init display ids.", GetGUIDLow());
+			return;
+		}
+
+		SetObjectScale(DEFAULT_OBJECT_SCALE);
+
+		uint8 gender = getGender();
+		switch (gender)
+		{
+		case GENDER_FEMALE:
+			SetDisplayId(info->displayId_f);
+			SetNativeDisplayId(info->displayId_f);
+			break;
+		case GENDER_MALE:
+			SetDisplayId(info->displayId_m);
+			SetNativeDisplayId(info->displayId_m);
+			break;
+		default:
+			sLog.outError("Invalid gender %u for player", gender);
+			return;
+		}
+		setFactionForRace(getRace());
+		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+	}
+	PlayDirectSound(11976);
 }
 
 // if false -> then toggled off if was on| if true -> toggled on if was off AND meets requirements
