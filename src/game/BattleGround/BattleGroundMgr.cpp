@@ -1828,7 +1828,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
     uint32 gladiatorCount[3], duelistCount[3], rivalCount[3], challengerCount[3];
     for (uint32 i = 0; i < 3; ++i)
     {
-        gladiatorCount[i]       = std::max(uint32(sortedTeams[i].size()) * 5 / 1000, uint32(1));
+        gladiatorCount[i]       = std::max(uint32(sortedTeams[i].size()) * 2 / 100, uint32(1));
         duelistCount[i]         = std::max(uint32(sortedTeams[i].size()) * 3 / 100, uint32(1));
         rivalCount[i]           = std::max(uint32(sortedTeams[i].size()) * 10 / 100, uint32(1));
         challengerCount[i]      = std::max(uint32(sortedTeams[i].size()) * 35 / 100, uint32(1));
