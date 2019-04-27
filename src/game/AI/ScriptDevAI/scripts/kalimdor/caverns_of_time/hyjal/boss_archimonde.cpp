@@ -312,7 +312,7 @@ struct boss_archimondeAI : public ScriptedAI
 
 		if (m_uiGripOfTheLegionTimer < uiDiff)
 		{
-			if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+			if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_SKIP_TANK))
 			{
 				if (DoCastSpellIfCan(pTarget, SPELL_GRIP_OF_THE_LEGION) == CAST_OK)
 					m_uiGripOfTheLegionTimer = urand(20000, 30000);
