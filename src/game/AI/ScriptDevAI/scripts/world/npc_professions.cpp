@@ -180,9 +180,11 @@
 ###*/
 
 /* Alchemy */
+
 #define Q_MASTER_TRANSMUTE      10899
 #define Q_MASTER_ELIXIR         10902
 #define Q_MASTER_POTION         10897
+
 
 #define GOSSIP_CAST_FORTITUDE         "Empower my group with Fortitude"
 #define GOSSIP_CAST_WISDOM       "Empower my group with Wisdom"
@@ -647,7 +649,9 @@ void SendActionMenu_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature, uint3
 		break;
 		//Unlearn Alchemy
 	case GOSSIP_ACTION_INFO_DEF + 4:
-		if (pPlayer->HasSpell(S_POTION))
+      
+		if (pPlayer->HasSpell(S_TRANSMUTE))
+
 		{
 			//ProcessUnlearnAction(player, creature, S_UNLEARN_TRANSMUTE, 0, DoHighUnlearnCost(player));
 			if (pPlayer->GetMoney() >= uint32(GetUnlearnCostLow(pPlayer)))
@@ -752,7 +756,6 @@ void SendConfirmUnlearn_npc_prof_Alchemy(Player* pPlayer, Creature* pCreature, u
 			//unknown textID ()
 			pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
 			break;
-			pPlayer->ADD_GOSSIP_ITEM_EXTENDED(0, GOSSIP_UNLEARN_SMITH_SPEC, GOSSIP_SENDER_CHECK, uiAction, BOX_UNLEARN_ARMORORWEAPON, GetUnlearnCostLow(pPlayer), false);
 		case N_TRAINER_POTION:                                     //Lauranna Thar'well
 			//AddGossipItemFor(player, 0, GOSSIP_UNLEARN_POTION, GOSSIP_SENDER_CHECK, action,    BOX_UNLEARN_ALCHEMY_SPEC, DoHighUnlearnCost(player), false);
 			pPlayer->ADD_GOSSIP_ITEM_EXTENDED(0, GOSSIP_UNLEARN_POTION, GOSSIP_SENDER_CHECK, uiAction, BOX_UNLEARN_ALCHEMY_SPEC, GetUnlearnCostLow(pPlayer), false);
