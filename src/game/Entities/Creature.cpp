@@ -813,10 +813,14 @@ bool Creature::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo cons
     if (InstanceData* iData = GetMap()->GetInstanceData())
         iData->OnCreatureCreate(this);
 
+    // set distance from where player can see this creature.
+    //SetVisibilityRange(cinfo->VisibilityRange);
+
     if (sObjectMgr.IsEncounter(GetEntry(), GetMapId()))
     {
         // encounter boss forced decay timer to 1h
         m_corpseDelay = 3600;                               // TODO: maybe add that to config file
+        SetVisibilityRange(VISIBILITY_DISTANCE_GIGANTIC);
     }
     else
     {
@@ -824,21 +828,279 @@ bool Creature::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo cons
         {
             case CREATURE_ELITE_RARE:
                 m_corpseDelay = sWorld.getConfig(CONFIG_UINT32_CORPSE_DECAY_RARE);
+                SetVisibilityRange(VISIBILITY_DISTANCE_LARGE);
                 break;
             case CREATURE_ELITE_ELITE:
                 m_corpseDelay = sWorld.getConfig(CONFIG_UINT32_CORPSE_DECAY_ELITE);
+                SetVisibilityRange(VISIBILITY_DISTANCE_LARGE);
                 break;
             case CREATURE_ELITE_RAREELITE:
                 m_corpseDelay = sWorld.getConfig(CONFIG_UINT32_CORPSE_DECAY_RAREELITE);
+                SetVisibilityRange(VISIBILITY_DISTANCE_LARGE);
                 break;
             case CREATURE_ELITE_WORLDBOSS:
                 m_corpseDelay = sWorld.getConfig(CONFIG_UINT32_CORPSE_DECAY_WORLDBOSS);
+                SetVisibilityRange(VISIBILITY_DISTANCE_LARGE);
                 break;
             default:
                 m_corpseDelay = sWorld.getConfig(CONFIG_UINT32_CORPSE_DECAY_NORMAL);
+		SetVisibilityRange(VISIBILITY_DISTANCE_LARGE);
                 break;
         }
     }
+
+	if (GetEntry() == 18733)
+		SetVisibilityRange(VISIBILITY_DISTANCE_GIGANTIC);
+
+	if (GetEntry() == 17711)
+		SetVisibilityRange(VISIBILITY_DISTANCE_GIGANTIC);
+
+	if (GetEntry() == 18728)
+		SetVisibilityRange(VISIBILITY_DISTANCE_GIGANTIC);
+
+	if (GetEntry() == 16178)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16179)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16180)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16181)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16388)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16389)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16407)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16408)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16409)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16410)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16411)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16412)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16413)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16414)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16415)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16424)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16425)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16426)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16457)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16459)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16460)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16461)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16468)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16470)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16471)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16472)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 15551)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 15687)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 15688)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 15690)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16151)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16152)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16159)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16169)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16170)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16171)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16173)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 18733)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16174)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16175)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16176)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16177)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 13219)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 15547)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 15548)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+
+	if (GetEntry() == 16473)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16481)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16482)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16488)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16489)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16525)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16524)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16504)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16525)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16526)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+
+	if (GetEntry() == 16529)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16530)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16539)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16540)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16544)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16545)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16595)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16596)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16806)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16811)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+
+	if (GetEntry() == 16812)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16813)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16814)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16815)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 16816)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17007)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17067)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17096)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17211)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17167)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+
+	if (GetEntry() == 17225)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17229)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17229)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17248)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17261)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17267)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17283)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17469)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17521)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17533)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+
+	if (GetEntry() == 17534)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17535)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17546)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17547)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17548)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17603)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 18168)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 19872)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 19873)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 19874)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 19875)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 19876)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21160)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21664)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21682)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21683)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21726)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21747)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21748)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21750)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 21752)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 71014)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 71015)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 71016)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 71033)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 98000)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 3795)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 3794)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 18486)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 18485)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 18487)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17943)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17945)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
+	if (GetEntry() == 17948)
+		SetVisibilityRange(VISIBILITY_DISTANCE_NORMAL);
 
     // Add to CreatureLinkingHolder if needed
     if (sCreatureLinkingMgr.GetLinkedTriggerInformation(this))

@@ -439,6 +439,24 @@ void WorldSession::HandleBattleFieldPortOpcode(WorldPacket& recv_data)
             _player->SetBGTeam(ginfo.GroupTeam);
             // bg->HandleBeforeTeleportToBattleGround(_player);
             sBattleGroundMgr.SendToBattleGround(_player, ginfo.IsInvitedToBGInstanceGUID, bgTypeId);
+            //removes additional bg queues on entry
+            for (int i = 0; i < PLAYER_MAX_BATTLEGROUND_QUEUES;) {
+		BattleGroundQueueTypeId bgQueueTypeId2 = _player->GetBattleGroundQueueTypeId(i);
+		BattleGroundQueue& bgQueue = sBattleGroundMgr.m_BattleGroundQueues[bgQueueTypeId2];
+		if (bgQueueTypeId2 == bgQueueTypeId) 
+		{
+
+			++i;
+		}
+		else
+		{
+			_player->RemoveBattleGroundQueueId(bgQueueTypeId2);
+			bgQueue.RemovePlayer(_player->GetObjectGuid(), false);
+			++i;
+		}
+
+	    	}
+			ChatHandler(_player).PSendSysMessage(3112);
             // add only in HandleMoveWorldPortAck()
             // bg->AddPlayer(_player,team);
             DEBUG_LOG("Battleground: player %s (%u) joined battle for bg %u, bgtype %u, queue type %u.", _player->GetName(), _player->GetGUIDLow(), bg->GetInstanceID(), bg->GetTypeID(), bgQueueTypeId);

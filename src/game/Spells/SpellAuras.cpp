@@ -453,7 +453,7 @@ AreaAura::~AreaAura()
 PersistentAreaAura::PersistentAreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32* currentBasePoints, SpellAuraHolder* holder, Unit* target,
                                        Unit* caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, holder, target, caster, castItem)
 {
-    m_isPersistent = true;
+	m_isPersistent = true;
 }
 
 PersistentAreaAura::~PersistentAreaAura()
@@ -1807,14 +1807,14 @@ void Aura::TriggerSpell()
                         triggerTarget->RemoveAurasDueToSpell(28820);
                         return;
                     }
-                    case 38443:                             // Totemic Mastery (Skyshatter Regalia (Shaman Tier 6) - bonus)
-                    {
-                        if (triggerTarget->IsAllTotemSlotsUsed())
-                            triggerTarget->CastSpell(triggerTarget, 38437, TRIGGERED_OLD_TRIGGERED, nullptr, this);
-                        else
-                            triggerTarget->RemoveAurasDueToSpell(38437);
-                        return;
-                    }
+                    //case 38443:                             // Totemic Mastery (Skyshatter Regalia (Shaman Tier 6) - bonus)
+                    //{
+                    //    if (triggerTarget->IsAllTotemSlotsUsed())
+                    //        triggerTarget->CastSpell(triggerTarget, 38437, TRIGGERED_OLD_TRIGGERED, nullptr, this);
+                    //    else
+                    //        triggerTarget->RemoveAurasDueToSpell(38437);
+                    //    return;
+                    //}
                     default:
                         break;
                 }
@@ -1860,6 +1860,15 @@ void Aura::TriggerSpell()
         // Spell exist but require custom code
         switch (auraId)
         {
+            case 38443:                             // Totemic Mastery (Skyshatter Regalia (Shaman Tier 6) - bonus)
+			{
+				Unit* caster = GetCaster();
+				if (caster->IsAllTotemSlotsUsed())
+					caster->CastSpell(caster, 38437, TRIGGERED_OLD_TRIGGERED);
+				else
+					caster->RemoveAurasDueToSpell(38437);
+				return;
+			}
             case 9347:                                      // Mortal Strike
             {
                 if (target->GetTypeId() != TYPEID_UNIT)
@@ -2321,6 +2330,19 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                             // not use ammo and not allow use
                             ((Player*)target)->RemoveAmmo();
                         return;
+					case 46021:
+					{
+						if (target->IsPlayer())
+						{
+							Player* player = GetCaster()->GetBeneficiaryPlayer();
+							uint32 Areamap = player->GetAreaId();
+							if (player->GetAreaId() == 3703 && target->IsPlayer())
+							{
+								player->CrossTradeEnable();
+								return;
+							}
+						}
+					}
                 }
                 break;
             }
@@ -2678,19 +2700,30 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             case 46738:
             case 46739:
             case 46740:
-            {
-                uint32 spellId = 0;
-                switch (urand(0,5))
-                {
-                    case 0: spellId = 46736; break;
-                    case 1: spellId = 46738; break;
-                    case 2: spellId = 46739; break;
-                    case 3: spellId = 46740; break;
-                    case 4: return;
-                }
-                target->CastSpell(target, spellId, TRIGGERED_OLD_TRIGGERED);
-                break;
-            }
+			{
+				uint32 spellId = 0;
+				switch (urand(0, 5))
+				{
+				case 0: spellId = 46736; break;
+				case 1: spellId = 46738; break;
+				case 2: spellId = 46739; break;
+				case 3: spellId = 46740; break;
+				case 4: return;
+				}
+				target->CastSpell(target, spellId, TRIGGERED_OLD_TRIGGERED);
+				break;
+			}
+			case 46021:
+			{
+				if (target->IsPlayer())
+				{
+					Player* player = GetCaster()->GetBeneficiaryPlayer();
+					player->CrossTradeDisable();
+					return;
+				}
+			return;
+			}
+            
         }
     }
 
@@ -6240,7 +6273,7 @@ void Aura::HandleShapeshiftBoosts(bool apply)
         Unit::SpellAuraHolderMap& tAuras = target->GetSpellAuraHolderMap();
         for (Unit::SpellAuraHolderMap::iterator itr = tAuras.begin(); itr != tAuras.end();)
         {
-            if (itr->second->IsRemovedOnShapeLost())
+            if (itr->second->IsRemovedOnShapeLost() && itr->second->GetSpellProto()->Id != 12328)  // Sweeping Strikes keep TODO
             {
                 target->RemoveAurasDueToSpell(itr->second->GetId());
                 itr = tAuras.begin();

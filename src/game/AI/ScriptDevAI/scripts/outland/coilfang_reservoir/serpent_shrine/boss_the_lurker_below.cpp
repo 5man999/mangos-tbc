@@ -348,7 +348,7 @@ UnitAI* GetAI_boss_the_lurker_below(Creature* pCreature)
 bool GOUse_go_strange_pool(Player* player, GameObject* go)
 {
     // There is some chance to fish The Lurker Below, sources are from 20s to 10minutes, average 5min => 20 tries, hence 5%
-    if (urand(0, 99) < 5)
+    if (urand(0, 99) < 20)
     {
         if (ScriptedInstance* pInstance = (ScriptedInstance*)go->GetInstanceData())
         {

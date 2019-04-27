@@ -338,7 +338,7 @@ Unit::Unit() :
 
     m_detectInvisibilityMask = 0;
     m_invisibilityMask = 0;
-    
+
     memset(m_invisibilityValues, 0, sizeof(m_invisibilityValues));
     memset(m_invisibilityDetectValues, 0, sizeof(m_invisibilityDetectValues));
 
@@ -420,6 +420,8 @@ Unit::~Unit()
             m_currentSpell = nullptr;
         }
     }
+    
+	m_events.KillAllEvents(true);
 
     CleanupDeletedAuras();
 
@@ -6199,7 +6201,7 @@ void Unit::CombatStop(bool includingCast, bool includingCombo)
     if (GetTypeId() == TYPEID_PLAYER)
         ((Player*)this)->SendAttackSwingCancelAttack();     // melee and ranged forced attack cancel
 
-    AttackStop(true, includingCast, includingCombo);
+    AttackStop(true, includingCast);
     RemoveAllAttackers();
     DeleteThreatList();
 
@@ -8207,7 +8209,7 @@ bool Unit::IsVisibleForOrDetect(Unit const* u, WorldObject const* viewPoint, boo
     else if (!at_same_transport)                            // distance for show player/pet/creature (no transport case)
     {
         // Any units far than max visible distance for viewer or not in our map are not visible too
-        if (!IsWithinDistInMap(viewPoint, _map.GetVisibilityDistance() + (inVisibleList ? World::GetVisibleUnitGreyDistance() : 0.0f), is3dDistance))
+        if (!IsWithinDistInMap(viewPoint, GetVisibilityRange() + (inVisibleList ? World::GetVisibleUnitGreyDistance() : 0.0f), is3dDistance))
             return false;
     }
 
@@ -9224,6 +9226,13 @@ bool Unit::IsOfflineTarget(Unit* victim) const
 
 bool Unit::IsLeashingTarget(Unit* victim) const
 {
+	uint32 map = GetMapId();
+	uint32 targetid = static_cast<Creature const*>(this)->GetGUIDLow();
+	if (!(targetid == 5480040 || targetid == 5342001 || targetid == 5343001 || targetid == 5320644 || targetid == 5320143))
+	{
+		if (map == 548 || map == 565 || map == 568 || map == 534 || map == 532 || map == 550 || map == 544)
+			return false;
+	}
     float AttackDist = GetAttackDistance(victim);
     float ThreatRadius = sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS);
     float x, y, z, ori;
@@ -9847,7 +9856,7 @@ void CharmInfo::InitCharmCreateSpells()
             m_charmspells[x].SetActionAndType(spellId, ACT_DISABLED);
 
             ActiveStates newstate;
-            bool onlyselfcast = true;            
+            bool onlyselfcast = true;
 
             for (uint32 i = 0; i < 3 && onlyselfcast; ++i)  // nonexistent spell will not make any problems as onlyselfcast would be false -> break right away
             {
@@ -11803,7 +11812,7 @@ void Unit::InterruptSpellsCastedOnMe(bool killDelayed)
     // Maximum spell range=100m ?
     MaNGOS::AnyUnitInObjectRangeCheck u_check(this, 100.0f);
     MaNGOS::UnitListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(targets, u_check);
-    Cell::VisitAllObjects(this, searcher, GetMap()->GetVisibilityDistance());
+    Cell::VisitAllObjects(this, searcher, GetVisibilityRange());
     for (auto& target : targets)
     {
         if (!CanAttack(target))

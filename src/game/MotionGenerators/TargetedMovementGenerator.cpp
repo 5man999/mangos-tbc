@@ -165,7 +165,12 @@ bool TargetedMovementGeneratorMedium<T, D>::Update(T& owner, const uint32& time_
         D::_clearUnitStateMove(owner);
         return true;
     }
-
+ 
+    if (!i_angle == 0.f && i_target->getVictim() == &owner)
+	   {
+		      i_angle = 0.f; 
+	   }
+    
     bool targetMoved = false;
     i_recheckDistance.Update(time_diff);
     if (i_recheckDistance.Passed())

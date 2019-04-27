@@ -1079,7 +1079,7 @@ uint32 Group::CanJoinBattleGroundQueue(BattleGroundTypeId bgTypeId, BattleGround
     uint32 memberscount = GetMembersCount();
     if (memberscount < MinPlayerCount)
         return BG_JOIN_ERR_GROUP_NOT_ENOUGH;
-    if (memberscount > MaxPlayerCount)
+    if (memberscount > 2)
         return BG_JOIN_ERR_GROUP_TOO_MANY;
 
     // get a player as reference, to compare other players' stats to (arena team id, queue id based on level, etc.)

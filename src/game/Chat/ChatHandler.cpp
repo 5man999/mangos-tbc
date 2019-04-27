@@ -168,7 +168,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
 
             if (msg.empty())
                 break;
-
+	    
             if (ChatHandler(this).ParseCommands(msg.c_str()))
                 break;
 
@@ -178,12 +178,19 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             if (msg.empty())
                 break;
 
+            
             if (type == CHAT_MSG_SAY)
                 GetPlayer()->Say(msg, lang);
             else if (type == CHAT_MSG_EMOTE)
                 GetPlayer()->TextEmote(msg);
             else if (type == CHAT_MSG_YELL)
-                GetPlayer()->Yell(msg, lang);
+		if (_player->getLevel() >= 61)
+		{
+			GetPlayer()->Yell(msg, lang);
+
+		}
+		else
+			ChatHandler(_player).PSendSysMessage(3116);
         } break;
 
         case CHAT_MSG_WHISPER:
@@ -215,6 +222,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 SendPlayerNotFoundNotice(to);
                 return;
             }
+            
+            if (_player->getLevel() < 62)
+			{
+				ChatHandler(_player).PSendSysMessage(3115);
+				return;
+
+			}
 
             if (!sWorld.getConfig(CONFIG_BOOL_ALLOW_TWO_SIDE_INTERACTION_CHAT) && tSecurity == SEC_PLAYER && pSecurity == SEC_PLAYER)
             {
@@ -436,6 +450,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
             std::string channel, msg;
             recv_data >> channel;
             recv_data >> msg;
+            
+            if (_player->getLevel() < 62)
+			{
+				ChatHandler(_player).PSendSysMessage(3116);
+				return;
+
+			}
 
             if (!processChatmessageFurtherAfterSecurityChecks(msg, lang))
                 return;

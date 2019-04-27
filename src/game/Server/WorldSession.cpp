@@ -638,6 +638,9 @@ void WorldSession::LogoutPlayer(bool Save)
 /// Kick a player out of the World
 void WorldSession::KickPlayer()
 {
+    _player->SaveToDB(); // Save character information
+	_player->SaveInventoryAndGoldToDB(); // Save Inventory & gold
+    
     if (_player)
         LogoutPlayer(false);
 

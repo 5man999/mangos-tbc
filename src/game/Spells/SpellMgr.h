@@ -1563,7 +1563,6 @@ inline bool IsStackableAuraEffect(SpellEntry const* entry, SpellEntry const* ent
     // Ignore non-aura effects
     if (!aura)
         return true;
-
     // Get first similar - second spell's same aura with the same sign
     uint32 similar = EFFECT_INDEX_0;
     for (uint32 e = EFFECT_INDEX_0; e < MAX_EFFECT_INDEX; ++e)
@@ -1761,6 +1760,8 @@ inline bool IsStackableAuraEffect(SpellEntry const* entry, SpellEntry const* ent
         case SPELL_AURA_EMPATHY: // Beast Lore
         // TODO: Make these exclusive rather than unstackable physically and move to nonmui:
         case SPELL_AURA_MOD_CASTING_SPEED_NOT_STACK: // Heroism, Bloodlust, Icy Veins, Power Infusion
+			if (entry->Id == 20554 || entry->Id == 12472 || entry->Id == 2825 || entry->Id == 32182)
+				return true;
         case SPELL_AURA_MOD_MOUNTED_SPEED_NOT_STACK: // Mounted Speed effects
         case SPELL_AURA_HASTE_SPELLS: // Post 2.0 Mind-numbing Poison and Curse of Tongues
             return false; // Never stacking auras

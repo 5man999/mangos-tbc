@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the CMaNGOS Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify
@@ -645,6 +645,8 @@ Player::Player(WorldSession* session): Unit(), m_taxiTracker(*this), m_mover(thi
     m_createdInstanceClearTimer = MINUTE * IN_MILLISECONDS;
 
     m_cinematicMgr = nullptr;
+    
+    m_visibilityRange = DefaultObjectsVisibilityDistance[VISIBILITY_DISTANCE_LARGE];
 }
 
 Player::~Player()
@@ -919,6 +921,8 @@ bool Player::Create(uint32 guidlow, const std::string& name, uint8 race, uint8 c
         }
     }
     // all item positions resolved
+    
+    SetFakeValues();
 
     return true;
 }
@@ -1346,6 +1350,45 @@ void Player::Update(const uint32 diff)
 {
     if (!IsInWorld())
         return;
+    uint32 Areamap = GetAreaId();
+    if (Areamap == 3628) //Halaa
+    {
+		QueryResult* result = CharacterDatabase.Query("SELECT * FROM game_event_status WHERE event = 16");
+		if (result)
+		{
+			if (HasAuraType(SPELL_AURA_FLY) || (IsMounted() && HasAuraType(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED)))
+			{
+				RemoveSpellsCausingAura(SPELL_AURA_FLY);
+				RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
+				RemoveAurasDueToSpell(642);
+				RemoveAurasDueToSpell(1020);
+				m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
+				CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
+			}
+		delete result;
+		}
+    }
+
+	if (!isInCombat() && Areamap == 3710)
+		doomtimer = -1;
+	if (HasAura(31943) && isInCombat() && Areamap == 3710)
+	{
+		if (doomtimer == -1) // if timer not started, start it
+			doomtimer = 500;
+		else if (doomtimer > 0) // if timer not ended, decrease
+		{
+			if ((uint32)doomtimer <= diff)
+				doomtimer = 0;
+			else
+				doomtimer -= diff;
+		}
+		else
+		{
+			CastSpell(this, 31944, TRIGGERED_OLD_TRIGGERED);
+			doomtimer = -1;
+		}
+		
+	}
 
     // Undelivered mail
     if (m_nextMailDelivereTime && m_nextMailDelivereTime <= time(nullptr))
@@ -1579,7 +1622,7 @@ void Player::Update(const uint32 diff)
     SendUpdateToOutOfRangeGroupMembers();
 
     Pet* pet = GetPet();
-    if (pet && !pet->IsWithinDistInMap(this, GetMap()->GetVisibilityDistance()) && (GetCharmGuid() && (pet->GetObjectGuid() != GetCharmGuid())))
+    if (pet && !pet->IsWithinDistInMap(this, GetVisibilityRange()) && (GetCharmGuid() && (pet->GetObjectGuid() != GetCharmGuid())))
         pet->Unsummon(PET_SAVE_REAGENTS, this);
 
     if (IsHasDelayedTeleport())
@@ -1899,14 +1942,14 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         {
             if (Unit* charm = GetCharm())
             {
-                if (!charm->IsWithinDist3d(x, y, z, GetMap()->GetVisibilityDistance()))
+                if (!charm->IsWithinDist3d(x, y, z, GetVisibilityRange()))
                     BreakCharmOutgoing(charm);
             }
 
             if (Pet* pet = GetPet())
             {
                 // same map, only remove pet if out of range for new position
-                if (!pet->IsWithinDist3d(x, y, z, GetMap()->GetVisibilityDistance()))
+                if (!pet->IsWithinDist3d(x, y, z, GetVisibilityRange()))
                     UnsummonPetTemporaryIfAny();
             }
         }
@@ -1939,7 +1982,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         if (!(options & TELE_TO_NOT_LEAVE_COMBAT))
             CombatStop();
 
-        if (!IsWithinDist3d(x, y, z, GetMap()->GetVisibilityDistance()))
+        if (!IsWithinDist3d(x, y, z, GetVisibilityRange()))
             RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_TELEPORTED);
 
         // this will be used instead of the current location in SaveToDB
@@ -2436,7 +2479,7 @@ void Player::SetGameMaster(bool on)
     UnitList deadUnits;
     MaNGOS::AnyDeadUnitCheck u_check(this);
     MaNGOS::UnitListSearcher<MaNGOS::AnyDeadUnitCheck > searcher(deadUnits, u_check);
-    Cell::VisitAllObjects(this, searcher, GetMap()->GetVisibilityDistance());
+    Cell::VisitAllObjects(this, searcher, GetVisibilityRange());
     for (auto deadUnit : deadUnits)
     {
         if (deadUnit->GetTypeId() == TYPEID_UNIT)
@@ -3628,8 +3671,8 @@ uint32 Player::resetTalentsCost() const
     // After that it increases in increments of 5 gold
     int32 new_cost = m_resetTalentsCost + 5 * GOLD;
     // until it hits a cap of 50 gold.
-    if (new_cost > 50 * GOLD)
-        new_cost = 50 * GOLD;
+    if (new_cost > 10 * GOLD)
+        new_cost = 10 * GOLD;
     return new_cost;
 }
 
@@ -4358,8 +4401,10 @@ void Player::BuildPlayerRepop()
     // convert player body to ghost
     SetHealth(1);
 
-    if (!GetSession()->isLogingOut())
-        SetRoot(false);
+	if (!GetSession()->isLogingOut())
+		SetRoot(false);
+
+	
 
     // BG - remove insignia related
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
@@ -6858,11 +6903,19 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
 
     if (m_zoneUpdateId != newZone || force)
     {
-        // handle outdoor pvp zones
+		if (newZone == 3277)
+		{
+			SendInitWorldStates(newZone, newArea);
+			//sWorldState.HandlePlayerLeaveArea(this, m_areaUpdateId);
+			//sWorldState.HandlePlayerEnterArea(this, newArea);
+		}
+         //handle outdoor pvp zones
         sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sWorldState.HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sOutdoorPvPMgr.HandlePlayerEnterZone(this, newZone);
         sWorldState.HandlePlayerEnterZone(this, newZone);
+		
+		// handle outdoor pvp zones
 
         if (sWorld.getConfig(CONFIG_BOOL_WEATHER))
         {
@@ -6871,7 +6924,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
         }
     }
 
-    if (m_areaUpdateId != newArea || force)
+    if (m_areaUpdateId != newArea && newZone != 3277 || force)
     {
         SendInitWorldStates(newZone, newArea); // only if really enters to new zone, not just area change, works strange...
 
@@ -14755,6 +14808,8 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
     // Other way is to saves m_team into characters table.
     setFactionForRace(getRace());
     SetCharm(nullptr);
+    
+    SetFakeValues();
 
     // load home bind and check in same time class/race pair, it used later for restore broken positions
     if (!_LoadHomeBind(holder->GetResult(PLAYER_LOGIN_QUERY_LOADHOMEBIND)))
@@ -16339,7 +16394,7 @@ void Player::SaveToDB()
     uberInsert.addUInt32(GetGUIDLow());
     uberInsert.addUInt32(GetSession()->GetAccountId());
     uberInsert.addString(m_name);
-    uberInsert.addUInt8(getRace());
+    uberInsert.addUInt8(getORace());
     uberInsert.addUInt8(getClass());
     uberInsert.addUInt8(getGender());
     uberInsert.addUInt32(getLevel());
@@ -16659,28 +16714,80 @@ void Player::_SaveInventory()
         itr->item->SetEnchantmentDuration(itr->slot, itr->leftduration);
     }
 
-    // if no changes
-    if (m_itemUpdateQueue.empty()) return;
+	// if no changes
+	if (m_itemUpdateQueue.empty()) return;
 
-    // do not save if the update queue is corrupt
-    bool error = false;
-    for (auto item : m_itemUpdateQueue)
-    {
-        if (!item || item->GetState() == ITEM_REMOVED) continue;
-        Item* test = GetItemByPos(item->GetBagSlot(), item->GetSlot());
+	// do not save if the update queue is corrupt
+	bool error = false;
+	for (auto item : m_itemUpdateQueue)
+	{
+		if (!item || item->GetState() == ITEM_REMOVED) continue;
+		Item* test = GetItemByPos(item->GetBagSlot(), item->GetSlot());
+		int32 playerguid = 0;
+		playerguid = GetGUIDLow();
+		int32 money_id = 0;
+		int32 ban_id = 0;
+		QueryResult* result = CharacterDatabase.Query("SELECT MAX(id) FROM character_money");
+		if (result)
+		{
+			Field* fields = result->Fetch();
+			money_id = fields[0].GetUInt64() + 1;
+			delete result;
+		}
 
-        if (test == nullptr)
-        {
-            sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
-            error = true;
-        }
-        else if (test != item)
-        {
-            sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the item with guid %d is there instead!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow(), test->GetGUIDLow());
-            error = true;
-        }
-    }
+		if (test == nullptr)
+		{
+			static SqlStatementID LogInventory;
 
+			SqlStatement stmt = CharacterDatabase.CreateStatement(LogInventory, "INSERT INTO character_money (id,guid,account,name,money,date) VALUES (?, ?, ?, ?, ?, NOW())");
+			stmt.addUInt32(money_id);
+			stmt.addUInt32(GetGUIDLow());
+			stmt.addUInt32(GetSession()->GetAccountId());
+			stmt.addString(m_name);
+			stmt.addInt32(GetMoney());
+			stmt.Execute();
+			sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
+			CharacterDatabase.PExecute("UPDATE characters Set money = 0 WHERE guid = '%u'", playerguid);
+
+			static SqlStatementID Ban;
+			SqlStatement stmt2 = LoginDatabase.CreateStatement(Ban, "INSERT INTO account_banned (id,bandate,unbandate,bannedby,banreason,active) VALUES (?, ?, ?, ?, ?, ?)");
+			stmt2.addUInt32(GetSession()->GetAccountId());
+			stmt2.addUInt32(1546363986);
+			stmt2.addUInt64(9999999999);
+			stmt2.addString(m_name);
+			stmt2.addString(m_name);
+			stmt2.addUInt32(1);
+			stmt2.Execute();
+			error = true;
+		}
+
+
+		else if (test != item)
+		{
+			static SqlStatementID LogInventory;
+			SqlStatement stmt = CharacterDatabase.CreateStatement(LogInventory, "INSERT INTO character_money (id,guid,account,name,money,date) VALUES (?, ?, ?, ?, ?, NOW())");
+			stmt.addUInt32(money_id);
+			stmt.addUInt32(GetGUIDLow());
+			stmt.addUInt32(GetSession()->GetAccountId());
+			stmt.addString(m_name);
+			stmt.addInt32(GetMoney());
+			stmt.Execute();
+			sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
+			CharacterDatabase.PExecute("UPDATE characters Set money = 0 WHERE guid = '%u'", playerguid);
+
+			static SqlStatementID Ban;
+			SqlStatement stmt2 = LoginDatabase.CreateStatement(Ban, "INSERT INTO account_banned (id,bandate,unbandate,bannedby,banreason,active) VALUES (?, ?, ?, ?, ?, ?)");
+			stmt2.addUInt32(GetSession()->GetAccountId());
+			stmt2.addUInt32(1546363986);
+			stmt2.addUInt64(9999999999);
+			stmt2.addString(m_name);
+			stmt2.addString(m_name);
+			stmt2.addUInt32(1);
+			stmt2.Execute();
+			error = true;
+		}
+
+	}
     if (error)
     {
         sLog.outError("Player::_SaveInventory - one or more errors occurred save aborted!");
@@ -18773,6 +18880,83 @@ void Player::CorrectMetaGemEnchants(uint8 exceptslot, bool apply)
     }
 }
 
+void Player::CrossTradeDisable()
+{
+	if (!(getOFaction() == getFaction()))
+	{
+		RemoveAurasDueToSpell(16591);
+		RemoveAurasDueToSpell(16593);
+		RemoveAurasDueToSpell(16595);
+		SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
+		setFaction(getOFaction());
+		InitDisplayIds();
+		FixLanguageSkills(true, true);
+		setFactionForRace(getRace());
+		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+
+	}
+	RemoveAurasDueToSpell(16591);
+	RemoveAurasDueToSpell(16593);
+	RemoveAurasDueToSpell(16595);
+	RemoveSpellsCausingAura(SPELL_AURA_FLY);
+	RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
+	RemoveSpellsCausingAura(SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED);
+	RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
+	RemoveSpellsCausingAura(SPELL_AURA_MOD_MOUNTED_SPEED_ALWAYS);
+	m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
+}
+
+void Player::CrossTradeEnable()
+{
+	if (!(m_oFaction == 1))
+	{
+		SetByteValue(UNIT_FIELD_BYTES_0, 0, 1);
+		setFaction(1);
+		FixLanguageSkills();
+		RemoveAurasDueToSpell(16591);
+		RemoveAurasDueToSpell(16593);
+		RemoveAurasDueToSpell(16595);
+
+		PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
+		if (!info)
+		{
+			for (int i = 1; i <= CLASS_DRUID; i++)
+			{
+				info = sObjectMgr.GetPlayerInfo(getRace(), i);
+				if (info)
+					break;
+			}
+		}
+
+		if (!info)
+		{
+			sLog.outError("Player %u has incorrect race/class pair. Can't init display ids.", GetGUIDLow());
+			return;
+		}
+
+		SetObjectScale(DEFAULT_OBJECT_SCALE);
+
+		uint8 gender = getGender();
+		switch (gender)
+		{
+		case GENDER_FEMALE:
+			SetDisplayId(info->displayId_f);
+			SetNativeDisplayId(info->displayId_f);
+			break;
+		case GENDER_MALE:
+			SetDisplayId(info->displayId_m);
+			SetNativeDisplayId(info->displayId_m);
+			break;
+		default:
+			sLog.outError("Invalid gender %u for player", gender);
+			return;
+		}
+		setFactionForRace(getRace());
+		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+	}
+	PlayDirectSound(11976);
+}
+
 // if false -> then toggled off if was on| if true -> toggled on if was off AND meets requirements
 void Player::ToggleMetaGemsActive(uint8 exceptslot, bool apply)
 {
@@ -18845,6 +19029,8 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
 {
     if (BattleGround* bg = GetBattleGround())
     {
+        CFLeaveBattleGround();
+        
         bg->RemovePlayerAtLeave(GetObjectGuid(), teleportToEntryPoint, true);
 
         // call after remove to be sure that player resurrected for correct cast
@@ -18860,11 +19046,159 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
                 }
 
                 CastSpell(this, 26013, TRIGGERED_OLD_TRIGGERED);               // Deserter
+
             }
         }
     }
 }
 
+void Player::CFJoinBattleGround()
+{
+    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
+        return;
+
+    FixLanguageSkills();
+
+    if (!NativeTeam())
+    {
+        SetByteValue(UNIT_FIELD_BYTES_0, 0, getFRace());
+        setFaction(getFFaction());
+    }
+	RemoveAurasDueToSpell(16591);
+	RemoveAurasDueToSpell(16593);
+	RemoveAurasDueToSpell(16595);
+
+    FakeDisplayID();
+    sWorld.InvalidatePlayerDataToAllClient(this->GetObjectGuid());
+}
+
+void Player::CFLeaveBattleGround()
+{
+    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
+        return;
+
+    FixLanguageSkills(true, true);
+
+    RemoveAurasDueToSpell(20584);
+
+    SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
+    setFaction(getOFaction());
+	RemoveAurasDueToSpell(16591);
+	RemoveAurasDueToSpell(16593);
+	RemoveAurasDueToSpell(16595);
+    InitDisplayIds();
+    sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+}
+
+void Player::BgBattleGroundCheck()
+{
+	if (!NativeTeam() && getFaction() == m_oFaction)
+	{
+		SetByteValue(UNIT_FIELD_BYTES_0, 0, getFRace());
+		setFaction(getFFaction());
+		FakeDisplayID();
+		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+	}
+}
+
+void Player::FakeDisplayID()
+{
+    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
+        return;
+
+    if (!NativeTeam())
+    {
+        PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
+        if (!info)
+        {
+            for (int i = 1; i <= CLASS_DRUID; i++)
+            {
+                info = sObjectMgr.GetPlayerInfo(getRace(), i);
+                if (info)
+                    break;
+            }
+        }
+
+        if (!info)
+        {
+            sLog.outError("Player %u has incorrect race/class pair. Can't init display ids.", GetGUIDLow());
+            return;
+        }
+
+        SetObjectScale(DEFAULT_OBJECT_SCALE);
+
+        uint8 gender = getGender();
+        switch (gender)
+        {
+        case GENDER_FEMALE:
+            SetDisplayId(info->displayId_f);
+            SetNativeDisplayId(info->displayId_f);
+            break;
+        case GENDER_MALE:
+            SetDisplayId(info->displayId_m);
+            SetNativeDisplayId(info->displayId_m);
+            break;
+        default:
+            sLog.outError("Invalid gender %u for player", gender);
+            return;
+        }
+    }
+}
+
+void Player::FixLanguageSkills(bool force, bool native)
+{
+    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
+        return;
+
+    if (!force)
+        native = NativeTeam();
+
+    // SpellId, OriginalSpell
+    auto spells = std::unordered_map<uint32, bool>();
+
+    for (auto& i : sObjectMgr.GetPlayerInfo(getORace(), getClass())->spell)
+        if (auto spell = sSpellTemplate.LookupEntry<SpellEntry>(i))
+                if (spell->Effect[0] == SPELL_EFFECT_LANGUAGE)
+                    spells[spell->Id] = true;
+
+    for (auto& i : sObjectMgr.GetPlayerInfo(getFRace(), getClass())->spell)
+        if (auto spell = sSpellTemplate.LookupEntry<SpellEntry>(i))
+                if (spell->Effect[0] == SPELL_EFFECT_LANGUAGE)
+                    spells[spell->Id] = false;
+
+    for (auto& i : spells)
+    {
+        if (i.second == native)
+            learnSpell(i.first, true);
+    }
+}
+
+void Player::SetFakeValues()
+{
+    m_oRace = GetByteValue(UNIT_FIELD_BYTES_0, 0);
+    m_oFaction = GetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE);
+
+    m_fRace = 0;
+
+    while (m_fRace == 0)
+    {
+        for (uint8 i = RACE_HUMAN; i <= RACE_DRAENEI; ++i)
+        {
+            if (i == RACE_GOBLIN)
+                continue;
+
+            PlayerInfo const* info = sObjectMgr.GetPlayerInfo(i, getClass());
+            if (!info || Player::TeamForRace(i) == GetOTeam())
+                continue;
+
+            if (urand(0, 5) == 0)
+                m_fRace = i;
+        }
+    }
+
+    m_fFaction = Player::getFactionForRace(m_fRace);
+	im_fFaction = m_fFaction;
+}
 bool Player::CanJoinToBattleground() const
 {
     // check Deserter debuff

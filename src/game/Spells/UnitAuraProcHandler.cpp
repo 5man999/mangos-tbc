@@ -1339,15 +1339,24 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 {
                     if (!pVictim || !pVictim->isAlive())
                         return SPELL_AURA_PROC_FAILED;
-
+		    Map* _map = pVictim->GetMap();
                     // pVictim is caster of aura
                     if (triggeredByAura->GetCasterGuid() != pVictim->GetObjectGuid())
                         return SPELL_AURA_PROC_FAILED;
+                    if (_map->IsRaid())
+					{
+						basepoints[0] = triggerAmount * damage / 200;
+						pVictim->CastCustomSpell(pVictim, 15290, &basepoints[0], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, castItem, triggeredByAura);
+						return SPELL_AURA_PROC_OK;              // no hidden cooldown
 
+					}
                     // heal amount
-                    basepoints[0] = triggerAmount * damage / 100;
-                    pVictim->CastCustomSpell(pVictim, 15290, &basepoints[0], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, castItem, triggeredByAura);
-                    return SPELL_AURA_PROC_OK;              // no hidden cooldown
+					else
+					{
+						basepoints[0] = triggerAmount * damage / 100;
+						pVictim->CastCustomSpell(pVictim, 15290, &basepoints[0], nullptr, nullptr, TRIGGERED_OLD_TRIGGERED, castItem, triggeredByAura);
+						return SPELL_AURA_PROC_OK;              // no hidden cooldown
+					}
                 }
                 // Priest Tier 6 Trinket (Ashtongue Talisman of Acumen)
                 case 40438:

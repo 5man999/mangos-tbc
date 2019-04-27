@@ -750,15 +750,16 @@ void Spell::FillTargetMap()
             }
         }
 
-        for (UnitList::iterator itr = tmpUnitLists[effToIndex[i]].begin(); itr != tmpUnitLists[effToIndex[i]].end();)
-        {
-            if (!CheckTarget(*itr, SpellEffectIndex(i), effException[effToIndex[i]]))
-            {
-                itr = tmpUnitLists[effToIndex[i]].erase(itr);
-            }
-            else
-                ++itr;
-        }
+       if (!IsDestinationOnlyEffect(m_spellInfo, SpellEffectIndex(i))) 
+		{
+			for (UnitList::iterator itr = tmpUnitLists[effToIndex[i]].begin(); itr != tmpUnitLists[effToIndex[i]].end();)
+			{
+				if (!CheckTarget(*itr, SpellEffectIndex(i), effException[effToIndex[i]]))
+					itr = tmpUnitLists[effToIndex[i]].erase(itr);
+				else
+					++itr;
+			}
+		}
 
         // Secial target filter before adding targets to list
         FilterTargetMap(tmpUnitLists[effToIndex[i]], SpellEffectIndex(i));
@@ -4982,7 +4983,7 @@ SpellCastResult Spell::CheckCast(bool strict)
         GameObject* ok = nullptr;
         MaNGOS::GameObjectFocusCheck go_check(m_caster, m_spellInfo->RequiresSpellFocus);
         MaNGOS::GameObjectSearcher<MaNGOS::GameObjectFocusCheck> checker(ok, go_check);
-        Cell::VisitGridObjects(m_caster, checker, m_caster->GetMap()->GetVisibilityDistance());
+        Cell::VisitGridObjects(m_caster, checker, m_caster->GetVisibilityRange());
 
         if (!ok)
             return SPELL_FAILED_REQUIRES_SPELL_FOCUS;
@@ -6049,9 +6050,28 @@ SpellCastResult Spell::CheckPetCast(Unit* target)
 
 SpellCastResult Spell::CheckCasterAuras() const
 {
+
     if (m_spellInfo->HasAttribute(SPELL_ATTR_EX6_IGNORE_CASTER_AURAS))
         return SPELL_CAST_OK;
-
+    // Fix Stealth & Invisibility check
+    if (m_spellInfo->Dispel == DISPEL_STEALTH || m_spellInfo->Dispel == DISPEL_INVISIBILITY)
+    {
+        Unit::SpellAuraHolderMap const& auras = m_caster->GetSpellAuraHolderMap();
+        for (const auto& itr : auras)
+        {
+                SpellAuraHolder* holder = itr.second;
+                SpellEntry const* pEntry = holder->GetSpellProto();
+                if (pEntry->HasAttribute(SPELL_ATTR_EX_DISPEL_AURAS_ON_IMMUNITY))
+                {
+                        for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+                        {
+                                if (pEntry->EffectApplyAuraName[i] == SPELL_AURA_DISPEL_IMMUNITY
+                                && pEntry->EffectMiscValue[i] == m_spellInfo->Dispel)
+                                return SPELL_FAILED_CASTER_AURASTATE;
+                        }
+                }
+         }
+    }
     // Flag drop spells totally immuned to caster auras
     // FIXME: find more nice check for all totally immuned spells
     // HasAttribute(SPELL_ATTR_EX3_UNK28) ?
@@ -7146,6 +7166,30 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
             if (m_caster->getVictim() == target)
                 return false;
             break;
+	case 32375: //mass dispell
+	{
+		target->RemoveAurasDueToSpell(45438);
+		target->RemoveAurasDueToSpell(10278);
+		target->RemoveAurasDueToSpell(5599);
+		target->RemoveAurasDueToSpell(1022);
+		target->RemoveAurasDueToSpell(642);
+		target->RemoveAurasDueToSpell(1020);
+		target->RemoveAurasDueToSpell(5573);
+		target->RemoveAurasDueToSpell(498);
+		break;
+	}
+	case 32014:
+		if (m_caster->getVictim() == target)
+			return false;
+		break;
+	case 31970:
+		if (m_caster->getVictim() == target)
+			return false;
+		break;	
+	case 31944:
+		if (!target->IsPlayer())
+			return false;
+		break;
         case 37676:                             // Insidious Whisper
             if (m_caster->getVictim() == target) // skips tank
                 return false;

@@ -60,7 +60,7 @@ enum
 
     // summoned creatures
     NPC_DOOMFIRE                = 18095,
-    // NPC_DOOMFIRE_SPIRIT       = 18104,
+	//NPC_DOOMFIRE_SPIRIT         = 18104,
     NPC_ANCIENT_WISP            = 17946,
     NPC_CHANNEL_TARGET          = 22418,                    // if he gets in range of 75.0f, then he gets enraged
 
@@ -103,6 +103,9 @@ struct boss_archimondeAI : public ScriptedAI
     uint32 m_uiSummonWispTimer;
     uint32 m_uiWispCount;
     uint32 m_uiEnrageTimer;
+    int32 m_iFingerMelee;
+	
+    ObjectGuid DoomfireSpiritGUID;
 
     bool m_bHasIntro;
     bool m_bIsEnraged;
@@ -114,11 +117,12 @@ struct boss_archimondeAI : public ScriptedAI
         m_uiDrainNordrassilTimer = 10000;
         m_uiFearTimer            = 40000;
         m_uiAirBurstTimer        = 30000;
-        m_uiGripOfTheLegionTimer = urand(5000, 25000);
-        m_uiDoomfireTimer        = 15000;
+        m_uiGripOfTheLegionTimer = urand(10000, 30000);
+        m_uiDoomfireTimer        = 5000;
         m_uiFingerOfDeathTimer   = 15000;
         m_uiHandOfDeathTimer     = 2000;
         m_uiWispCount            = 0;
+	m_iFingerMelee		 = -1;
         m_uiEnrageTimer          = 10 * MINUTE * IN_MILLISECONDS;
 
         m_bIsEnraged             = false;
@@ -134,13 +138,13 @@ struct boss_archimondeAI : public ScriptedAI
     void MoveInLineOfSight(Unit* pWho) override
     {
         // If the boss reaches the tree during the fight, then he enrages - the distance is not very clear
-        if (!m_bIsEnraged && pWho->GetEntry() == NPC_CHANNEL_TARGET && pWho->IsWithinDistInMap(m_creature, 75.0f))
-        {
-            m_uiEnrageTimer = 1000;
-            m_bIsEnraged = true;
-        }
+    //    if (!m_bIsEnraged && pWho->GetEntry() == NPC_CHANNEL_TARGET && pWho->IsWithinDistInMap(m_creature, 75.0f))
+    //    {
+    //        m_uiEnrageTimer = 1000;
+    //        m_bIsEnraged = true;
+    //    }
 
-        ScriptedAI::MoveInLineOfSight(pWho);
+    //    ScriptedAI::MoveInLineOfSight(pWho);
     }
 
     void KilledUnit(Unit* pVictim) override
@@ -182,7 +186,7 @@ struct boss_archimondeAI : public ScriptedAI
         {
             if (DoCastSpellIfCan(m_creature, SPELL_PROTECTION_OF_ELUNE) == CAST_OK)
             {
-                m_uiFingerOfDeathTimer = 5000;
+                m_uiFingerOfDeathTimer = 15000;
                 m_bStartEpilogue = true;
             }
         }
@@ -205,141 +209,190 @@ struct boss_archimondeAI : public ScriptedAI
         {
             pSummoned->CastSpell(pSummoned, SPELL_DOOMFIRE_SPAWN, TRIGGERED_OLD_TRIGGERED);
             pSummoned->CastSpell(pSummoned, SPELL_DOOMFIRE, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, m_creature->GetObjectGuid());
+
+			if (Unit* DoomfireSpirit = ObjectAccessor::GetUnit(*pSummoned, DoomfireSpiritGUID))
+			{
+				pSummoned->GetMotionMaster()->MoveFollow(DoomfireSpirit, 0.0f, 0.0f);
+				DoomfireSpiritGUID.Clear();
+			}
         }
     }
 
-    void UpdateAI(const uint32 uiDiff) override
-    {
-        // Intro timer
-        if (m_uiDrainNordrassilTimer)
-        {
-            if (m_uiDrainNordrassilTimer <= uiDiff)
-            {
-                if (DoCastSpellIfCan(m_creature, SPELL_DRAIN_TREE) == CAST_OK)
-                {
-                    if (!m_bHasIntro)
-                    {
-                        DoScriptText(SAY_INTRO, m_creature);
-                        m_bHasIntro = true;
-                    }
-                    m_uiDrainNordrassilTimer = 0;
-                }
-            }
-            else
-                m_uiDrainNordrassilTimer -= uiDiff;
-        }
+	void UpdateAI(const uint32 uiDiff) override
+	{
 
-        if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
-            return;
+		// Intro timer
+		if (m_uiDrainNordrassilTimer)
+		{
+			if (m_uiDrainNordrassilTimer <= uiDiff)
+			{
+				if (DoCastSpellIfCan(m_creature, SPELL_DRAIN_TREE) == CAST_OK)
+				{
+					if (!m_bHasIntro)
+					{
+						DoScriptText(SAY_INTRO, m_creature);
+						m_bHasIntro = true;
+					}
+					m_uiDrainNordrassilTimer = 0;
+				}
+			}
+			else
+				m_uiDrainNordrassilTimer -= uiDiff;
+		}
 
-        // Start epilogue - fight was won!
-        if (m_creature->GetHealthPercent() < 10.0f)
-        {
-            if (!m_bIsEpilogue)
-            {
-                DoScriptText(SAY_EPILOGUE, m_creature);
+		if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
+			return;
 
-                // move at home position and start outro
-                m_creature->GetMotionMaster()->MoveTargetedHome();
-                SetCombatMovement(false);
-                m_bIsEpilogue = true;
-            }
+		// Start epilogue - fight was won!
+		if (m_creature->GetHealthPercent() < 10.0f)
+		{
+			if (!m_bIsEpilogue)
+			{
+				DoScriptText(SAY_EPILOGUE, m_creature);
+				SetCombatMovement(false);
+				m_bIsEpilogue = true;
 
-            if (m_bStartEpilogue)
-            {
-                // Spam Finger of Death on players and Wisps
-                if (m_uiFingerOfDeathTimer < uiDiff)
-                {
-                    if (DoCastSpellIfCan(m_creature, urand(0, 1) ? SPELL_FINGER_DEATH_DUMMY : SPELL_FINGER_DEATH_SCRIPT) == CAST_OK)
-                        m_uiFingerOfDeathTimer = 1000;
-                }
-                else
-                    m_uiFingerOfDeathTimer -= uiDiff;
+				// Start epilogue at 10% hp
+				if (m_bIsEpilogue)
+				{
+					if (DoCastSpellIfCan(m_creature, SPELL_PROTECTION_OF_ELUNE) == CAST_OK)
+					{
+						m_uiFingerOfDeathTimer = 5000;
+						m_bStartEpilogue = true;
+					}
+				}
+				else if (m_pInstance)
+					m_pInstance->SetData(TYPE_ARCHIMONDE, FAIL);
+			}
 
-                if (m_uiSummonWispTimer < uiDiff)
-                {
-                    float fX, fY, fZ;
-                    m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0, 75.0f, urand(0, 1) ? frand(0, 2.8f) : frand(4.3f, M_PI_F * 2));
-                    m_creature->SummonCreature(NPC_ANCIENT_WISP, fX, fY, fZ, 0, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000);
-                    m_uiSummonWispTimer = urand(1000, 1500);
-                }
-                else
-                    m_uiSummonWispTimer -= uiDiff;
-            }
+			if (m_bStartEpilogue)
+			{
+				// Spam Finger of Death on players and Wisps
+				if (m_uiFingerOfDeathTimer < uiDiff)
+				{
+					if (DoCastSpellIfCan(m_creature, urand(0, 1) ? SPELL_FINGER_DEATH_DUMMY : SPELL_FINGER_DEATH_SCRIPT) == CAST_OK)
+						m_uiFingerOfDeathTimer = 1000;
+				}
+				else
+					m_uiFingerOfDeathTimer -= uiDiff;
 
-            // Stop using the other spells
-            return;
-        }
+				if (m_uiSummonWispTimer < uiDiff)
+				{
+					float m_fAngle;
+					float fX, fY, fZ;
+					m_fAngle = urand(0, M_PI_F * 2);
 
-        if (m_uiEnrageTimer)
-        {
-            if (m_uiEnrageTimer <= uiDiff)
-            {
-                if (DoCastSpellIfCan(m_creature, SPELL_HAND_OF_DEATH) == CAST_OK)
-                {
-                    DoScriptText(SAY_ENRAGE, m_creature);
-                    m_uiEnrageTimer = 0;
-                }
-            }
-            else
-                m_uiEnrageTimer -= uiDiff;
-        }
+					//m_creature->SummonCreature(NPC_ANCIENT_WISP, float(urand() % 40), float(0 % 40), 0, 0, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000);
+					m_creature->GetNearPoint(m_creature, fX, fY, fZ, 200, 75.0f, m_fAngle + frand(39.30f, M_PI_F * 2));
+					m_creature->SummonCreature(NPC_ANCIENT_WISP, fX, fY, fZ, 0, TEMPSPAWN_TIMED_OOC_DESPAWN, 15000);
+					m_uiSummonWispTimer = urand(600, 800);
+				}
+				else
+					m_uiSummonWispTimer -= uiDiff;
+			}
 
-        if (m_uiGripOfTheLegionTimer < uiDiff)
-        {
-            if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
-            {
-                if (DoCastSpellIfCan(pTarget, SPELL_GRIP_OF_THE_LEGION) == CAST_OK)
-                    m_uiGripOfTheLegionTimer = urand(5000, 25000);
-            }
-        }
-        else
-            m_uiGripOfTheLegionTimer -= uiDiff;
+			// Stop using the other spells
+			return;
+		}
 
-        if (m_uiAirBurstTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_AIR_BURST) == CAST_OK)
-            {
-                DoScriptText(urand(0, 1) ? SAY_AIR_BURST1 : SAY_AIR_BURST2, m_creature);
-                m_uiAirBurstTimer = urand(25000, 40000);
-            }
-        }
-        else
-            m_uiAirBurstTimer -= uiDiff;
+		if (m_uiEnrageTimer)
+		{
+			if (m_uiEnrageTimer <= uiDiff)
+			{
+				if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+				{
+					DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
+					DoScriptText(SAY_ENRAGE, m_creature);
+					m_uiEnrageTimer = 0;
+				}
+				else
+					m_uiEnrageTimer -= uiDiff;
+			}
+		}
 
-        if (m_uiFearTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature, SPELL_FEAR) == CAST_OK)
-                m_uiFearTimer = 42000;
-        }
-        else
-            m_uiFearTimer -= uiDiff;
+		if (m_uiGripOfTheLegionTimer < uiDiff)
+		{
+			if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+			{
+				if (DoCastSpellIfCan(pTarget, SPELL_GRIP_OF_THE_LEGION) == CAST_OK)
+					m_uiGripOfTheLegionTimer = urand(20000, 30000);
+			}
+		}
+		else
+			m_uiGripOfTheLegionTimer -= uiDiff;
 
-        if (m_uiDoomfireTimer < uiDiff)
-        {
-            if (DoCastSpellIfCan(m_creature, SPELL_DOOMFIRE_STRIKE) == CAST_OK)
-            {
-                DoScriptText(urand(0, 1) ? SAY_DOOMFIRE1 : SAY_DOOMFIRE2, m_creature);
-                m_uiDoomfireTimer = urand(10000, 15000);
-            }
-        }
-        else
-            m_uiDoomfireTimer -= uiDiff;
+		if (m_uiAirBurstTimer < uiDiff)
+		{
+			if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+			{
 
-        // If we are within range melee the target
-        if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
-            DoMeleeAttackIfReady();
-        // Else spam Finger of Death
-        else
-        {
-            if (!m_creature->IsNonMeleeSpellCasted(false))
-            {
-                if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
-                    DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
-            }
-        }
-    }
+				if (DoCastSpellIfCan(m_creature->getVictim(), SPELL_AIR_BURST) == CAST_OK)
+				{
+					DoScriptText(urand(0, 1) ? SAY_AIR_BURST1 : SAY_AIR_BURST2, m_creature);
+					m_uiAirBurstTimer = urand(35000, 50000);
+				}
+			}
+		}
+		else
+			m_uiAirBurstTimer -= uiDiff;
+
+		if (m_uiFearTimer < uiDiff)
+		{
+			if (DoCastSpellIfCan(m_creature, SPELL_FEAR) == CAST_OK)
+				m_uiFearTimer = 42000;
+		}
+		else
+			m_uiFearTimer -= uiDiff;
+
+		if (m_uiDoomfireTimer < uiDiff)
+		{
+			if (DoCastSpellIfCan(m_creature, SPELL_DOOMFIRE_STRIKE) == CAST_OK)
+			{
+				//DoScriptText(urand(0, 1) ? SAY_DOOMFIRE1 : SAY_DOOMFIRE2, m_creature);
+				m_uiDoomfireTimer = urand(5000, 6000);
+			}
+		}
+		else
+			m_uiDoomfireTimer -= uiDiff;
+
+		// If we are within range melee the target
+		if (Unit* victim = m_creature->getVictim())
+		{
+			if (m_creature->CanReachWithMeleeAttack(m_creature->getVictim()))
+			{
+				m_iFingerMelee = -1;
+				DoMeleeAttackIfReady();
+			}
+
+
+			else
+			{
+				if (!m_creature->IsNonMeleeSpellCasted(false))
+				{
+					if (m_iFingerMelee == -1) // if timer not started, start it
+						m_iFingerMelee = 3000;
+					else if (m_iFingerMelee > 0) // if timer not ended, decrease
+					{
+						if ((uint32)m_iFingerMelee <= uiDiff)
+							m_iFingerMelee = 0;
+						else
+							m_iFingerMelee -= uiDiff;
+					}
+
+					else
+					{
+						if (Unit* pTarget = m_creature->SelectAttackingTarget(ATTACKING_TARGET_RANDOM, 0, nullptr, SELECT_FLAG_PLAYER))
+							DoCastSpellIfCan(pTarget, SPELL_FINGER_DEATH);
+
+					}
+				}
+			}
+		}
+	}
+		
+    
 };
+
 
 /* This is the script for the Doomfire Spirit Mob. This mob controls the doomfire npc and allows it to move randomly around the map. */
 struct npc_doomfire_spiritAI : public ScriptedAI
@@ -368,6 +421,7 @@ struct npc_doomfire_spiritAI : public ScriptedAI
                 // Get the closest doomfire
                 if (Creature* pTemp = GetClosestCreatureWithEntry(m_creature, NPC_DOOMFIRE, 5.0f))
                     m_doomfireGuid = pTemp->GetObjectGuid();
+
 
                 m_uiDoomfireLoadTimer = 0;
             }

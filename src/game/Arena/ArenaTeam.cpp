@@ -23,6 +23,15 @@
 #include "World/World.h"
 #include "Entities/Player.h"
 
+int32 id = 0;
+int32 winning_team = 0;
+int32 losing_team = 0;
+int32 games_end = 0;
+int32 winner = 0;
+int32 Game_map = 0;
+int32 losing_rating = 0;
+int32 winning_rating = 0;
+
 void ArenaTeamMember::ModifyPersonalRating(Player* plr, int32 mod, uint32 slot)
 {
     if (int32(personal_rating) + mod < 0)
@@ -561,9 +570,11 @@ uint32 ArenaTeam::GetPoints(uint32 MemberRating)
 
     // type penalties for <5v5 teams
     if (m_Type == ARENA_TYPE_2v2)
-        points *= 0.76f;
+        points *= 2.00f;
     else if (m_Type == ARENA_TYPE_3v3)
-        points *= 0.88f;
+        points *= 2.15f;
+    else if (m_Type == ARENA_TYPE_5v5)
+        points *= 2.15f;
 
     return (uint32) points;
 }
@@ -596,6 +607,14 @@ void ArenaTeam::FinishGame(int32 mod)
         if (i->second->GetType() == this->m_Type && i->second->GetStats().rating > m_stats.rating)
             ++m_stats.rank;
     }
+	QueryResult* result = CharacterDatabase.Query("SELECT MAX(id) FROM arena_games");
+	if (result)
+	{
+		Field* fields = result->Fetch();
+		id = fields[0].GetUInt64() + 1;
+		delete result;
+	}
+	games_end = 1;
 }
 
 int32 ArenaTeam::WonAgainst(uint32 againstRating)
@@ -609,6 +628,8 @@ int32 ArenaTeam::WonAgainst(uint32 againstRating)
     FinishGame(mod);
     m_stats.wins_week += 1;
     m_stats.wins_season += 1;
+	winning_team = m_TeamId;
+	winning_rating = m_stats.rating;
 
     // return the rating change, used to display it on the results screen
     return mod;
@@ -623,6 +644,8 @@ int32 ArenaTeam::LostAgainst(uint32 againstRating)
     int32 mod = (int32)ceil(32.0f * (0.0f - chance));
     // modify the team stats accordingly
     FinishGame(mod);
+	losing_team = m_TeamId;
+	losing_rating = m_stats.rating;
 
     // return the rating change, used to display it on the results screen
     return mod;
@@ -646,6 +669,23 @@ void ArenaTeam::MemberLost(Player* plr, uint32 againstRating)
             // update the unit fields
             plr->SetArenaTeamInfoField(GetSlot(), ARENA_TEAM_GAMES_WEEK, m_member.games_week);
             plr->SetArenaTeamInfoField(GetSlot(), ARENA_TEAM_GAMES_SEASON, m_member.games_season);
+
+			static SqlStatementID insarenastats1;
+			int32 pguid = 0;
+			int32 arenateamid = 0;
+			int32 winner = 0;
+			pguid = m_member.guid;
+			games_end = 1;
+			//QueryResult* result = CharacterDatabase.Query("SELECT MAX(id) FROM arena_games");
+			//if (result)
+			//{
+				//Field* fields = result->Fetch();
+				//id = fields[0].GetUInt64() + 1;
+				//delete result;
+			//}
+			SqlStatement stmt = CharacterDatabase.CreateStatement(insarenastats1, "INSERT INTO arena_games (id, character_guid, winner, date) VALUES (?, ?, ?, NOW())");
+			stmt.PExecute(id, pguid, winner);
+
             return;
         }
     }
@@ -692,6 +732,16 @@ void ArenaTeam::MemberWon(Player* plr, uint32 againstRating)
             // update unit fields
             plr->SetArenaTeamInfoField(GetSlot(), ARENA_TEAM_GAMES_WEEK, m_member.games_week);
             plr->SetArenaTeamInfoField(GetSlot(), ARENA_TEAM_GAMES_SEASON, m_member.games_season);
+
+			static SqlStatementID insarenastats;
+			games_end = 1;
+			int32 pguid = 0;
+			int32 winner = 1;
+			pguid = m_member.guid;
+			//SqlStatement stmt = CharacterDatabase.CreateStatement(insarenastats, "INSERT INTO arena_games (id, character_guid, winner, date) VALUES (?, ?, ?, NOW())");
+			SqlStatement stmt = CharacterDatabase.CreateStatement(insarenastats, "INSERT INTO arena_games (id, character_guid, winner, date) VALUES (?, ?, ?, NOW())");
+			stmt.PExecute(id, pguid, winner);
+			
             return;
         }
     }
@@ -728,6 +778,36 @@ void ArenaTeam::UpdateArenaPointsHelper(std::map<uint32, uint32>& PlayerPoints)
 
 void ArenaTeam::SaveToDB()
 {
+	if (games_end == 1)
+	{
+		//std::string WName;
+		//QueryResult* winning_name = CharacterDatabase.PQuery("SELECT name FROM arena_team WHERE arenateamid='%u'", winning_team);
+		//Field* fields = winning_name->Fetch();
+		//WName = fields[0].GetCppString();
+		//delete winning_name;
+		//std::string LName;
+		//QueryResult* losing_name = CharacterDatabase.PQuery("SELECT name FROM arena_team WHERE arenateamid='%u'", losing_team);
+		//Field* fields = losing_name->Fetch();
+		//LName = fields[0].GetCppString();
+		//delete losing_name;
+
+		static SqlStatementID importgamestats;
+		//CharacterDatabase.PExecute("INSERT INTO pet_spell (guid,spell,slot,active) VALUES ('%u', '%u', '%u','%u')", m_charmInfo->GetPetNumber(), itr->first, itr->second->slotId, itr->second->active);
+
+		CharacterDatabase.PExecute("INSERT INTO pvpstats_arena (id,map,winning_team,losing_team,winning_rating,losing_rating,date) VALUES ('%u','%u','%u','%u','%u','%u',NOW())", id, Game_map, winning_team, losing_team, winning_rating, losing_rating);
+		//stmt.Execute(id, Game_map, winning_team, losing_team, winning_rating, losing_rating);
+
+		games_end = 0;
+		id = 0;
+		winning_team = 0;
+		losing_team = 0;
+		games_end = 0;
+		winner = 0;
+		Game_map = 0;
+		losing_rating = 0;
+		winning_rating = 0;
+	}
+
     // save team and member stats to db
     // called after a match has ended, or when calculating arena_points
     CharacterDatabase.BeginTransaction();
