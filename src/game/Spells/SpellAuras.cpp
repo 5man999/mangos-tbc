@@ -453,7 +453,7 @@ AreaAura::~AreaAura()
 PersistentAreaAura::PersistentAreaAura(SpellEntry const* spellproto, SpellEffectIndex eff, int32* currentBasePoints, SpellAuraHolder* holder, Unit* target,
                                        Unit* caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, holder, target, caster, castItem)
 {
-    m_isPersistent = true;
+	m_isPersistent = true;
 }
 
 PersistentAreaAura::~PersistentAreaAura()
@@ -2332,9 +2332,16 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                         return;
 					case 46021:
 					{
-						Player* player = GetCaster()->GetBeneficiaryPlayer();
-						player->CrossTradeEnable();
-						return;
+						if (target->IsPlayer())
+						{
+							Player* player = GetCaster()->GetBeneficiaryPlayer();
+							uint32 Areamap = player->GetAreaId();
+							if (player->GetAreaId() == 3703 && target->IsPlayer())
+							{
+								player->CrossTradeEnable();
+								return;
+							}
+						}
 					}
                 }
                 break;
@@ -2708,9 +2715,13 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 			}
 			case 46021:
 			{
-				Player* player = GetCaster()->GetBeneficiaryPlayer();
-				player->CrossTradeDisable();
-				return;
+				if (target->IsPlayer())
+				{
+					Player* player = GetCaster()->GetBeneficiaryPlayer();
+					player->CrossTradeDisable();
+					return;
+				}
+			return;
 			}
             
         }
