@@ -1360,12 +1360,35 @@ void Player::Update(const uint32 diff)
 			{
 				RemoveSpellsCausingAura(SPELL_AURA_FLY);
 				RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
+				RemoveAurasDueToSpell(642);
+				RemoveAurasDueToSpell(1020);
 				m_movementInfo.RemoveMovementFlag(MOVEFLAG_FLYING);
 				CastSpell(this, 37897, TRIGGERED_OLD_TRIGGERED);
 			}
 		delete result;
 		}
     }
+
+	if (!isInCombat() && Areamap == 3710)
+		doomtimer = -1;
+	if (HasAura(31943) && isInCombat() && Areamap == 3710)
+	{
+		if (doomtimer == -1) // if timer not started, start it
+			doomtimer = 500;
+		else if (doomtimer > 0) // if timer not ended, decrease
+		{
+			if ((uint32)doomtimer <= diff)
+				doomtimer = 0;
+			else
+				doomtimer -= diff;
+		}
+		else
+		{
+			CastSpell(this, 31944, TRIGGERED_OLD_TRIGGERED);
+			doomtimer = -1;
+		}
+		
+	}
 
     // Undelivered mail
     if (m_nextMailDelivereTime && m_nextMailDelivereTime <= time(nullptr))
@@ -4378,8 +4401,10 @@ void Player::BuildPlayerRepop()
     // convert player body to ghost
     SetHealth(1);
 
-    if (!GetSession()->isLogingOut())
-        SetRoot(false);
+	if (!GetSession()->isLogingOut())
+		SetRoot(false);
+
+	
 
     // BG - remove insignia related
     RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
@@ -6878,11 +6903,19 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
 
     if (m_zoneUpdateId != newZone || force)
     {
-        // handle outdoor pvp zones
+		if (newZone == 3277)
+		{
+			SendInitWorldStates(newZone, newArea);
+			//sWorldState.HandlePlayerLeaveArea(this, m_areaUpdateId);
+			//sWorldState.HandlePlayerEnterArea(this, newArea);
+		}
+         //handle outdoor pvp zones
         sOutdoorPvPMgr.HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sWorldState.HandlePlayerLeaveZone(this, m_zoneUpdateId);
         sOutdoorPvPMgr.HandlePlayerEnterZone(this, newZone);
         sWorldState.HandlePlayerEnterZone(this, newZone);
+		
+		// handle outdoor pvp zones
 
         if (sWorld.getConfig(CONFIG_BOOL_WEATHER))
         {
@@ -6891,7 +6924,7 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea, bool force)
         }
     }
 
-    if (m_areaUpdateId != newArea || force)
+    if (m_areaUpdateId != newArea && newZone != 3277 || force)
     {
         SendInitWorldStates(newZone, newArea); // only if really enters to new zone, not just area change, works strange...
 
@@ -16681,13 +16714,13 @@ void Player::_SaveInventory()
         itr->item->SetEnchantmentDuration(itr->slot, itr->leftduration);
     }
 
-    // if no changes
-    if (m_itemUpdateQueue.empty()) return;
+	// if no changes
+	if (m_itemUpdateQueue.empty()) return;
 
-    // do not save if the update queue is corrupt
-    bool error = false;
-    for (auto item : m_itemUpdateQueue)
-    {
+	// do not save if the update queue is corrupt
+	bool error = false;
+	for (auto item : m_itemUpdateQueue)
+	{
 		if (!item || item->GetState() == ITEM_REMOVED) continue;
 		Item* test = GetItemByPos(item->GetBagSlot(), item->GetSlot());
 		int32 playerguid = 0;
@@ -16705,7 +16738,7 @@ void Player::_SaveInventory()
 		if (test == nullptr)
 		{
 			static SqlStatementID LogInventory;
-			
+
 			SqlStatement stmt = CharacterDatabase.CreateStatement(LogInventory, "INSERT INTO character_money (id,guid,account,name,money,date) VALUES (?, ?, ?, ?, ?, NOW())");
 			stmt.addUInt32(money_id);
 			stmt.addUInt32(GetGUIDLow());
@@ -16715,7 +16748,7 @@ void Player::_SaveInventory()
 			stmt.Execute();
 			sLog.outError("Player(GUID: %u Name: %s)::_SaveInventory - the bag(%d) and slot(%d) values for the item with guid %d are incorrect, the player doesn't have an item at that position!", GetGUIDLow(), GetName(), item->GetBagSlot(), item->GetSlot(), item->GetGUIDLow());
 			CharacterDatabase.PExecute("UPDATE characters Set money = 0 WHERE guid = '%u'", playerguid);
-			
+
 			static SqlStatementID Ban;
 			SqlStatement stmt2 = LoginDatabase.CreateStatement(Ban, "INSERT INTO account_banned (id,bandate,unbandate,bannedby,banreason,active) VALUES (?, ?, ?, ?, ?, ?)");
 			stmt2.addUInt32(GetSession()->GetAccountId());
@@ -16754,7 +16787,7 @@ void Player::_SaveInventory()
 			error = true;
 		}
 
-    }
+	}
     if (error)
     {
         sLog.outError("Player::_SaveInventory - one or more errors occurred save aborted!");
@@ -18851,6 +18884,9 @@ void Player::CrossTradeDisable()
 {
 	if (!(getOFaction() == getFaction()))
 	{
+		RemoveAurasDueToSpell(16591);
+		RemoveAurasDueToSpell(16593);
+		RemoveAurasDueToSpell(16595);
 		SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
 		setFaction(getOFaction());
 		InitDisplayIds();
@@ -18859,6 +18895,9 @@ void Player::CrossTradeDisable()
 		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
 
 	}
+	RemoveAurasDueToSpell(16591);
+	RemoveAurasDueToSpell(16593);
+	RemoveAurasDueToSpell(16595);
 	RemoveSpellsCausingAura(SPELL_AURA_FLY);
 	RemoveSpellsCausingAura(SPELL_AURA_MOD_FLIGHT_SPEED_MOUNTED);
 	RemoveSpellsCausingAura(SPELL_AURA_MOD_INCREASE_MOUNTED_SPEED);
@@ -18874,6 +18913,9 @@ void Player::CrossTradeEnable()
 		SetByteValue(UNIT_FIELD_BYTES_0, 0, 1);
 		setFaction(1);
 		FixLanguageSkills();
+		RemoveAurasDueToSpell(16591);
+		RemoveAurasDueToSpell(16593);
+		RemoveAurasDueToSpell(16595);
 
 		PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
 		if (!info)
@@ -19004,6 +19046,7 @@ void Player::LeaveBattleground(bool teleportToEntryPoint)
                 }
 
                 CastSpell(this, 26013, TRIGGERED_OLD_TRIGGERED);               // Deserter
+
             }
         }
     }
@@ -19021,9 +19064,11 @@ void Player::CFJoinBattleGround()
         SetByteValue(UNIT_FIELD_BYTES_0, 0, getFRace());
         setFaction(getFFaction());
     }
+	RemoveAurasDueToSpell(16591);
+	RemoveAurasDueToSpell(16593);
+	RemoveAurasDueToSpell(16595);
 
     FakeDisplayID();
-
     sWorld.InvalidatePlayerDataToAllClient(this->GetObjectGuid());
 }
 
@@ -19038,9 +19083,22 @@ void Player::CFLeaveBattleGround()
 
     SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
     setFaction(getOFaction());
+	RemoveAurasDueToSpell(16591);
+	RemoveAurasDueToSpell(16593);
+	RemoveAurasDueToSpell(16595);
     InitDisplayIds();
-
     sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+}
+
+void Player::BgBattleGroundCheck()
+{
+	if (!NativeTeam() && getFaction() == m_oFaction)
+	{
+		SetByteValue(UNIT_FIELD_BYTES_0, 0, getFRace());
+		setFaction(getFFaction());
+		FakeDisplayID();
+		sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
+	}
 }
 
 void Player::FakeDisplayID()
@@ -19139,6 +19197,7 @@ void Player::SetFakeValues()
     }
 
     m_fFaction = Player::getFactionForRace(m_fRace);
+	im_fFaction = m_fFaction;
 }
 bool Player::CanJoinToBattleground() const
 {
