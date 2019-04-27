@@ -7095,6 +7095,13 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
                 return false;
             break;
         }
+		case 43657:
+		{
+			float dist = m_caster->GetDistance(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), DIST_CALC_COMBAT_REACH);
+			if (dist < 5.f)
+				return false;
+		}
+			break;
         case 39921:                                         // Vimgol Pentagram Beam
         {
             if (target->GetTypeId() != TYPEID_UNIT || target->GetEntry() != 23040 || m_caster->GetTypeId() != TYPEID_UNIT || m_caster->GetEntry() != 23040)
@@ -7190,7 +7197,25 @@ bool Spell::CheckTargetScript(Unit* target, SpellEffectIndex eff) const
 		if (!target->IsPlayer())
 			return false;
 		break;
-        case 37676:                             // Insidious Whisper
+	case 27136: //holy light
+	case 27135:
+	case 25292:
+	case 10329:
+	case 10328:
+	case 3472:
+	case 1042:
+	case 1026:
+	case 647:
+	{
+		Map* _map = m_caster->GetMap();
+		if (!(_map->IsRaid()))
+		{
+			if (m_spellInfo->EffectImplicitTargetA[eff] == TARGET_UNIT_FRIEND_AND_PARTY)
+				return false;
+		}
+	}
+
+    case 37676:                             // Insidious Whisper
             if (m_caster->getVictim() == target) // skips tank
                 return false;
 
@@ -7216,6 +7241,7 @@ bool Spell::CheckTarget(Unit* target, SpellEffectIndex eff, CheckException excep
 
     if (target != realCaster)
     {
+	
         // Check targets for not_selectable unit flag and remove
         // A player can cast spells on his pet (or other controlled unit) though in any state
         if (target->GetMasterGuid() != realCaster->GetObjectGuid())
