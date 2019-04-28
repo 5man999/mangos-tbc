@@ -42,6 +42,8 @@ class WorldTimer
             return newMSTime - oldMSTime;
         }
 
+		static uint32 getMSTimeDiffToNow(uint32 t) { return getMSTimeDiff(t, getMSTime()); }
+
         // get last world tick time
         static uint32 tickTime();
         // get previous world tick time
