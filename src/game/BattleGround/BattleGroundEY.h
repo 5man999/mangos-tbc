@@ -180,8 +180,8 @@ enum EYFlagState
 	EY_FLAG_STATE_ON_GROUND = 4
 };
 
-static const uint8 eyTickPoints[EY_NODES_MAX] = { 1, 2, 5, 10 };
-static const uint32 eyFlagPoints[EY_NODES_MAX] = { 75, 85, 100, 500 };
+static const uint8 eyTickPoints[EY_NODES_MAX] = { 2, 4, 3, 3 };
+static const uint32 eyFlagPoints[EY_NODES_MAX] = { 100, 150, 125, 125 };
 
 static const uint32 eyGraveyards[EY_NODES_MAX] = { GRAVEYARD_FEL_REAVER_RUINS, GRAVEYARD_BLOOD_ELF_TOWER, GRAVEYARD_DRAENEI_RUINS, GRAVEYARD_MAGE_TOWER };
 static const uint32 eyTriggers[EY_NODES_MAX] = { AREATRIGGER_FEL_REAVER_RUINS_BUFF, AREATRIGGER_BLOOD_ELF_TOWER_BUFF, AREATRIGGER_DRAENEI_RUINS_BUFF, AREATRIGGER_MAGE_TOWER_BUFF };
@@ -290,6 +290,10 @@ private:
 
 	uint8 m_towersAlliance;
 	uint8 m_towersHorde;
+	uint32 fel;
+	uint32 blood;
+	uint32 dra;
+	uint32 mage;
 
 	uint32 m_towerWorldState[EY_NODES_MAX];
 
