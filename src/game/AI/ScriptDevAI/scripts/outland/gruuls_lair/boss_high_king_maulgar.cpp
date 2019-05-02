@@ -144,6 +144,8 @@ struct boss_high_king_maulgarAI : public ScriptedAI
 
     void UpdateAI(const uint32 uiDiff) override
     {
+		if (m_creature->GetHealthPercent() < 5.0f && m_uiCouncilDeathCount != 4)
+			m_creature->SetHealthPercent(5);
         if (!m_creature->SelectHostileTarget() || !m_creature->getVictim())
             return;
 
