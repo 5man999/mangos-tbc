@@ -346,16 +346,19 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player* source, GameObject* target
     if (GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND && source->IsWithinDistInMap(target_obj, 10))
     {
         if (source->GetTeam() == ALLIANCE)
-        {
+        {	
             message_id = LANG_BG_WS_RETURNED_AF;
             type = CHAT_MSG_BG_SYSTEM_ALLIANCE;
             UpdateFlagState(HORDE, BG_WS_FLAG_STATE_WAIT_RESPAWN);
             RespawnFlag(ALLIANCE, false);
             PlaySoundToAll(BG_WS_SOUND_FLAG_RETURNED);
             UpdatePlayerScore(source, SCORE_FLAG_RETURNS, 1);
+			return;
         }
-        else
+		if (source->GetTeam() == HORDE)
         {
+			if(GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND)
+				return;
             message_id = LANG_BG_WS_PICKEDUP_AF;
             type = CHAT_MSG_BG_SYSTEM_HORDE;
             PlaySoundToAll(BG_WS_SOUND_ALLIANCE_FLAG_PICKED_UP);
@@ -365,25 +368,29 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player* source, GameObject* target
             m_FlagState[TEAM_INDEX_ALLIANCE] = BG_WS_FLAG_STATE_ON_PLAYER;
             UpdateFlagState(HORDE, BG_WS_FLAG_STATE_ON_PLAYER);
             UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, 1);
+			return;
         }
         // called in HandleGameObjectUseOpcode:
-        // target_obj->Delete();
+        //target_obj->Delete();
     }
 
     // Horde flag on ground(not in base) (returned or picked up again)
     if (GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND && source->IsWithinDistInMap(target_obj, 10))
     {
         if (source->GetTeam() == HORDE)
-        {
+        {	
             message_id = LANG_BG_WS_RETURNED_HF;
             type = CHAT_MSG_BG_SYSTEM_HORDE;
             UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_WAIT_RESPAWN);
             RespawnFlag(HORDE, false);
             PlaySoundToAll(BG_WS_SOUND_FLAG_RETURNED);
             UpdatePlayerScore(source, SCORE_FLAG_RETURNS, 1);
+			return;
         }
-        else
+		if (source->GetTeam() == ALLIANCE)
         {
+			if (GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND)
+				return;
             message_id = LANG_BG_WS_PICKEDUP_HF;
             type = CHAT_MSG_BG_SYSTEM_ALLIANCE;
             PlaySoundToAll(BG_WS_SOUND_HORDE_FLAG_PICKED_UP);
@@ -393,9 +400,10 @@ void BattleGroundWS::EventPlayerClickedOnFlag(Player* source, GameObject* target
             m_FlagState[TEAM_INDEX_HORDE] = BG_WS_FLAG_STATE_ON_PLAYER;
             UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_ON_PLAYER);
             UpdateWorldState(BG_WS_FLAG_UNK_HORDE, 1);
+			return;
         }
         // called in HandleGameObjectUseOpcode:
-        // target_obj->Delete();
+        //target_obj->Delete();
     }
 
     if (!message_id)
@@ -581,12 +589,12 @@ void BattleGroundWS::FillInitialWorldStates(WorldPacket& data, uint32& count)
 
     FillInitialWorldState(data, count, BG_WS_FLAG_CAPTURES_MAX, BG_WS_MAX_TEAM_SCORE);
 
-    if (m_FlagState[TEAM_INDEX_HORDE] == BG_WS_FLAG_STATE_ON_PLAYER)
+    if (m_FlagState[TEAM_INDEX_ALLIANCE] == BG_WS_FLAG_STATE_ON_PLAYER)
         FillInitialWorldState(data, count, BG_WS_FLAG_STATE_HORDE, 2);
     else
         FillInitialWorldState(data, count, BG_WS_FLAG_STATE_HORDE, 1);
 
-    if (m_FlagState[TEAM_INDEX_ALLIANCE] == BG_WS_FLAG_STATE_ON_PLAYER)
+    if (m_FlagState[TEAM_INDEX_HORDE] == BG_WS_FLAG_STATE_ON_PLAYER)
         FillInitialWorldState(data, count, BG_WS_FLAG_STATE_ALLIANCE, 2);
     else
         FillInitialWorldState(data, count, BG_WS_FLAG_STATE_ALLIANCE, 1);
