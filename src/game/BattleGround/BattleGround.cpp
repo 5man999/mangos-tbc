@@ -1202,13 +1202,15 @@ void BattleGround::StartBattleGround()
 
 void BattleGround::AddPlayer(Player* plr)
 {
-    plr->CFJoinBattleGround();
-	plr->BgBattleGroundCheck();
-    
-    // remove afk from player
-    if (plr->isAFK())
-        plr->ToggleAFK();
-
+	if (plr->isAFK())
+		plr->ToggleAFK();
+	//plr->CFJoinBattleGround();
+	//plr->BgBattleGroundCheck();
+	if (!(isArena())) 
+	{
+		plr->CFJoinBattleGround();
+		plr->BgBattleGroundCheck();
+	}
     // score struct must be created in inherited class
 
     ObjectGuid guid = plr->GetObjectGuid();
