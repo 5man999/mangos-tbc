@@ -185,7 +185,7 @@ void BattleGroundWS::EventPlayerCapturedFlag(Player* source)
         RewardReputationToTeam(889, m_ReputationCapture, HORDE);
     }
     // for flag capture is reward 2 honorable kills
-    RewardHonorToTeam(GetBonusHonorFromKill(2), source->GetTeam());
+    RewardHonorToTeam(GetBonusHonorFromKill(3), source->GetTeam());
 
     // despawn flags
     SpawnEvent(WS_EVENT_FLAG_A, 0, false);
