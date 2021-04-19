@@ -115,9 +115,9 @@ class ChatHandler
         * \param char const* message           : Message to send
         * \param Language language             : Language from Language enum in SharedDefines.h
         * \param ObjectGuid const& senderGuid  : May be null in some case but often required for ignore list
-        * \param char const* senderName        : Required for type *MONSTER* or *BATTLENET, but also if GM is true
-        * \param ObjectGuid const& targetGuid  : Often null, but needed for type *MONSTER* or *BATTLENET or *BATTLEGROUND* or *ACHIEVEMENT
-        * \param char const* targetName        : Often null, but needed for type *MONSTER* or *BATTLENET or *BATTLEGROUND*
+        * \param char const* senderName        : Required for type *MONSTER* or *BNET*, but also if GM is true
+        * \param ObjectGuid const& targetGuid  : Often null, but needed for type *MONSTER* or *BNET* or *BATTLEGROUND* or *ACHIEVEMENT*
+        * \param char const* targetName        : Often null, but needed for type *MONSTER* or *BNET* or *BATTLEGROUND*
         * \param char const* channelName       : Required only for CHAT_MSG_CHANNEL
         **/
         static void BuildChatPacket(
@@ -733,6 +733,7 @@ class ChatHandler
         bool HandleArenaFlushPointsCommand(char* args);
         bool HandleArenaSeasonRewardsCommand(char* args);
         bool HandleArenaDataReset(char* args);
+        bool HandleArenaTeamPointSet(char* args);
 
         bool HandleMmapPathCommand(char* args);
         bool HandleMmapLocCommand(char* args);
@@ -750,6 +751,9 @@ class ChatHandler
 
         // worldstate
         bool HandleWarEffortCommand(char* args);
+        bool HandleSunsReachReclamationPhaseCommand(char* args);
+        bool HandleSunsReachReclamationSubPhaseCommand(char* args);
+        bool HandleSunsReachReclamationCounterCommand(char* args);
         bool HandleExpansionRelease(char* args);
 
         // Battleground

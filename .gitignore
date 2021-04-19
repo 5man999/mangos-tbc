@@ -12,7 +12,6 @@
 .*
 *.o
 *.o.*
-*.a
 *.so
 *.so.dbg
 *.bin
@@ -45,6 +44,8 @@ autom4te.cache
 *.patch
 callgrind.out.*
 nbproject/
+.idea/
+cmake-build-*/
 
 #
 # Git stuff

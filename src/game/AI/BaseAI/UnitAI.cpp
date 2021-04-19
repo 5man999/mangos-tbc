@@ -188,7 +188,11 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
             if (flags == TRIGGERED_NONE)
                 flags |= TRIGGERED_NORMAL_COMBAT_CAST;
 
-            SpellCastResult result = caster->CastSpell(target, spellInfo, flags);
+            SpellCastResult result;
+            if (castFlags & CAST_ONLY_XYZ)
+                result = caster->CastSpell(target->GetPositionX(), target->GetPositionY(), target->GetPositionZ(), spellInfo, flags);
+            else
+                result = caster->CastSpell(target, spellInfo, flags);
             if (result != SPELL_CAST_OK)
             {
                 switch (result) // temporary adapter
@@ -201,6 +205,9 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
                         return CAST_FAIL_NOT_IN_LOS;
                     case SPELL_FAILED_PACIFIED:
                     case SPELL_FAILED_SILENCED:
+                    case SPELL_FAILED_STUNNED:
+                    case SPELL_FAILED_CONFUSED:
+                    case SPELL_FAILED_FLEEING:
                         return CAST_FAIL_STATE;
                     case SPELL_FAILED_NOT_READY:
                         return CAST_FAIL_COOLDOWN;
@@ -208,7 +215,9 @@ CanCastResult UnitAI::DoCastSpellIfCan(Unit* target, uint32 spellId, uint32 cast
                         return CAST_FAIL_POWER;
                     case SPELL_FAILED_CASTER_AURASTATE: // valid - doesnt need logging
                     case SPELL_FAILED_BAD_TARGETS:
+                    case SPELL_FAILED_DONT_REPORT:
                         return CAST_FAIL_OTHER;
+                    default: break;
                 }
                 sLog.outBasic("DoCastSpellIfCan by %s attempt to cast spell %u but spell failed due to unknown result %u.", m_unit->GetObjectGuid().GetString().c_str(), spellId, result);
                 return CAST_FAIL_OTHER;
@@ -335,14 +344,23 @@ void UnitAI::OnSpellCastStateChange(Spell const* spell, bool state, WorldObject*
     }
     else
     {
-        if (m_unit->GetVictim() && !GetCombatScriptStatus())
-            m_unit->SetTarget(m_unit->GetVictim());
+        if (spellInfo->Id == 31306)
+        {
+            HandleDelayedInstantAnimation(spellInfo);
+        }
         else
-            m_unit->SetTarget(nullptr);
+        {
+            if (m_unit->GetVictim() && !GetCombatScriptStatus())
+                m_unit->SetTarget(m_unit->GetVictim());
+            else
+                m_unit->SetTarget(nullptr);
+        }
     }
 
     if (state)
+    {
         m_currentSpell = spell;
+    }
 }
 
 void UnitAI::OnChannelStateChange(Spell const* spell, bool state, WorldObject* target)
@@ -416,7 +434,7 @@ void UnitAI::CheckForHelp(Unit* who, Unit* me, float distance)
     if (me->GetMap()->Instanceable())
         distance = distance / 2.5f;
 
-    if (me->CanInitiateAttack() && me->CanAttackOnSight(victim) && victim->isInAccessablePlaceFor(me))
+    if (me->CanInitiateAttack() && me->CanAttackOnSight(victim) && victim->isInAccessablePlaceFor(me) && victim->IsVisibleForOrDetect(me, me, false))
     {
         if (me->IsWithinDistInMap(who, distance) && me->IsWithinLOSInMap(who, true))
         {
@@ -502,15 +520,7 @@ class AiDelayEventAround : public BasicEvent
                     pReceiver->AI()->ReceiveAIEvent(m_eventType, &m_owner, pInvoker, m_miscValue);
                     // Special case for type 0 (call-assistance)
                     if (m_eventType == AI_EVENT_CALL_ASSISTANCE)
-                    {
-                        if (pReceiver->IsInCombat() || !pInvoker)
-                            continue;
-                        if (pReceiver->CanAssist(&m_owner) && pReceiver->CanAttackOnSight(pInvoker))
-                        {
-                            pReceiver->SetNoCallAssistance(true);
-                            pReceiver->AI()->AttackStart(pInvoker);
-                        }
-                    }
+                        pReceiver->AI()->HandleAssistanceCall(&m_owner, pInvoker);
                 }
             }
             m_receiverGuids.clear();
@@ -536,23 +546,36 @@ void UnitAI::SendAIEventAround(AIEventType eventType, Unit* invoker, uint32 dela
         CreatureList receiverList;
 
         // Allow sending custom AI events to all units in range
-        if (eventType >= AI_EVENT_CUSTOM_EVENTAI_A && eventType <= AI_EVENT_CUSTOM_EVENTAI_F && eventType != AI_EVENT_GOT_CCED || eventType > AI_EVENT_START_ESCORT)
+        if ((eventType >= AI_EVENT_CUSTOM_EVENTAI_A && eventType <= AI_EVENT_CUSTOM_EVENTAI_F && eventType != AI_EVENT_GOT_CCED) || eventType > AI_EVENT_START_ESCORT)
         {
             MaNGOS::AnyUnitInObjectRangeCheck u_check(m_unit, radius);
             MaNGOS::CreatureListSearcher<MaNGOS::AnyUnitInObjectRangeCheck> searcher(receiverList, u_check);
-            Cell::VisitGridObjects(m_unit, searcher, radius);
+            Cell::VisitAllObjects(m_unit, searcher, radius);
         }
         else // TODO: Expand functionality in future if needed
         {
             MaNGOS::AnyAssistCreatureInRangeCheck u_check(m_unit, invoker, radius);
             MaNGOS::CreatureListSearcher<MaNGOS::AnyAssistCreatureInRangeCheck> searcher(receiverList, u_check);
-            Cell::VisitGridObjects(m_unit, searcher, radius);
+            Cell::VisitAllObjects(m_unit, searcher, radius);
         }
 
         if (!receiverList.empty())
         {
-            AiDelayEventAround* e = new AiDelayEventAround(eventType, invoker ? invoker->GetObjectGuid() : ObjectGuid(), *m_unit, receiverList, miscValue);
-            m_unit->m_events.AddEvent(e, m_unit->m_events.CalculateTime(delay));
+            if (delay)
+            {
+                AiDelayEventAround* e = new AiDelayEventAround(eventType, invoker ? invoker->GetObjectGuid() : ObjectGuid(), *m_unit, receiverList, miscValue);
+                m_unit->m_events.AddEvent(e, m_unit->m_events.CalculateTime(delay));
+            }
+            else
+            {
+                for (Creature* receiver : receiverList)
+                {
+                    receiver->AI()->ReceiveAIEvent(eventType, m_unit, invoker, miscValue);
+                    // Special case for type 0 (call-assistance)
+                    if (eventType == AI_EVENT_CALL_ASSISTANCE)
+                        receiver->AI()->HandleAssistanceCall(m_unit, invoker);
+                }
+            }
         }
     }
 }

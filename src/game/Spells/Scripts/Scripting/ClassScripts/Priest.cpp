@@ -19,12 +19,21 @@
 #include "Spells/Scripts/SpellScript.h"
 #include "Spells/SpellAuras.h"
 
+struct SpiritOfRedemptionHeal : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (effIdx == EFFECT_INDEX_0)
+            spell->SetDamage(spell->GetCaster()->GetMaxHealth());
+    }
+};
+
 enum
 {
     SPELL_PLAYER_CONSUME_MAGIC = 32676,
 };
 
-struct ConsumeMagicSpellScript : public SpellScript
+struct ConsumeMagic : public SpellScript
 {
     SpellCastResult OnCheckCast(Spell* spell, bool strict) const override
     {
@@ -58,6 +67,20 @@ struct ConsumeMagicSpellScript : public SpellScript
     }
 };
 
+struct PowerInfusion : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool/* strict*/) const override
+    {
+        // Patch 1.10.2 (2006-05-02):
+        // Power Infusion: This aura will no longer stack with Arcane Power. If you attempt to cast it on someone with Arcane Power, the spell will fail.
+        if (Unit* target = spell->m_targets.getUnitTarget())
+            if (target->GetAuraCount(12042))
+                return SPELL_FAILED_AURA_BOUNCED;
+
+        return SPELL_CAST_OK;
+    }
+};
+
 struct ShadowWordDeath : public SpellScript
 {
     void OnHit(Spell* spell, SpellMissInfo /*missInfo*/) const override
@@ -67,8 +90,36 @@ struct ShadowWordDeath : public SpellScript
     }
 };
 
+struct Blackout : public AuraScript
+{
+    bool OnCheckProc(Aura* /*aura*/, ProcExecutionData& data) const override
+    {
+        if (!data.damage || data.isHeal)
+            return false;
+        return true;
+    }
+};
+
+enum
+{
+    MANA_LEECH_PASSIVE = 28305,
+};
+
+struct Shadowfiend : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->CastSpell(summon, MANA_LEECH_PASSIVE, TRIGGERED_OLD_TRIGGERED);
+        summon->AI()->AttackStart(spell->m_targets.getUnitTarget());
+    }
+};
+
 void LoadPriestScripts()
 {
-    RegisterSpellScript<ConsumeMagicSpellScript>("spell_consume_magic");
+    RegisterSpellScript<ConsumeMagic>("spell_consume_magic");
+    RegisterSpellScript<PowerInfusion>("spell_power_infusion");
     RegisterSpellScript<ShadowWordDeath>("spell_shadow_word_death");
+    RegisterSpellScript<SpiritOfRedemptionHeal>("spell_spirit_of_redemption_heal");
+    RegisterAuraScript<Blackout>("spell_blackout");
+    RegisterSpellScript<Shadowfiend>("spell_shadowfiend");
 }

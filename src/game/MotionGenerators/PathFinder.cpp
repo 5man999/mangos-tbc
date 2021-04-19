@@ -22,13 +22,15 @@
 #include "MotionGenerators/PathFinder.h"
 #include "Log.h"
 #include "World/World.h"
-#include "Metric/Metric.h"
 #include "Entities/Transports.h"
-
 #include <Detour/Include/DetourCommon.h>
 #include <Detour/Include/DetourMath.h>
-#include <limits>
 
+#ifdef BUILD_METRICS
+ #include "Metric/Metric.h"
+#endif
+
+#include <limits>
 ////////////////// PathFinder //////////////////
 PathFinder::PathFinder(const Unit* owner) :
     m_polyLength(0), m_type(PATHFIND_BLANK),
@@ -56,10 +58,15 @@ void PathFinder::SetCurrentNavMesh()
     if (MMAP::MMapFactory::IsPathfindingEnabled(m_sourceUnit->GetMapId(), m_sourceUnit))
     {
         MMAP::MMapManager* mmap = MMAP::MMapFactory::createOrGetMMapManager();
-        if (m_defaultMapId != m_sourceUnit->GetMapId())
-            m_defaultNavMeshQuery = mmap->GetNavMeshQuery(m_sourceUnit->GetMapId(), m_sourceUnit->GetInstanceId());
+        if (GenericTransport* transport = m_sourceUnit->GetTransport())
+            m_navMeshQuery = mmap->GetModelNavMeshQuery(transport->GetDisplayId());
+        else
+        {
+            if (m_defaultMapId != m_sourceUnit->GetMapId())
+                m_defaultNavMeshQuery = mmap->GetNavMeshQuery(m_sourceUnit->GetMapId(), m_sourceUnit->GetInstanceId());
 
-        m_navMeshQuery = m_defaultNavMeshQuery;
+            m_navMeshQuery = m_defaultNavMeshQuery;
+        }
 
         if (m_navMeshQuery)
             m_navMesh = m_navMeshQuery->getAttachedNavMesh();
@@ -69,12 +76,14 @@ void PathFinder::SetCurrentNavMesh()
 bool PathFinder::calculate(float destX, float destY, float destZ, bool forceDest/* = false*/, bool straightLine/* = false*/)
 {
     float x, y, z;
-    m_sourceUnit->GetPosition(x, y, z);
+    m_sourceUnit->GetPosition(x, y, z, m_sourceUnit->GetTransport());
     Vector3 dest(destX, destY, destZ);
+    if (GenericTransport* transport = m_sourceUnit->GetTransport())
+        transport->CalculatePassengerOffset(dest.x, dest.y, dest.z);
     return calculate(Vector3(x, y, z), dest, forceDest, straightLine);
 }
 
-bool PathFinder::calculate(const Vector3& start, Vector3& dest, bool forceDest/* = false*/, bool straightLine/* = false*/)
+bool PathFinder::calculate(Vector3 const& start, Vector3 const& dest, bool forceDest/* = false*/, bool straightLine/* = false*/)
 {
     if (!MaNGOS::IsValidMapCoord(dest.x, dest.y, dest.z))
         return false;
@@ -82,6 +91,7 @@ bool PathFinder::calculate(const Vector3& start, Vector3& dest, bool forceDest/*
     if (!MaNGOS::IsValidMapCoord(start.x, start.y, start.z))
         return false;
 
+#ifdef BUILD_METRICS
     metric::duration<std::chrono::microseconds> meas("pathfinder.calculate", {
         { "entry", std::to_string(m_sourceUnit->GetEntry()) },
         { "guid", std::to_string(m_sourceUnit->GetGUIDLow()) },
@@ -89,6 +99,7 @@ bool PathFinder::calculate(const Vector3& start, Vector3& dest, bool forceDest/*
         { "map_id", std::to_string(m_sourceUnit->GetMapId()) },
         { "instance_id", std::to_string(m_sourceUnit->GetInstanceId()) }
     }, 1000);
+#endif
 
     //if (GenericTransport* transport = m_sourceUnit->GetTransport())
     //    transport->CalculatePassengerOffset(dest.x, dest.y, dest.z, nullptr);
@@ -126,8 +137,7 @@ dtPolyRef PathFinder::getPathPolyByPosition(const dtPolyRef* polyPath, uint32 po
         return INVALID_POLYREF;
 
     dtPolyRef nearestPoly = INVALID_POLYREF;
-    float minDist2d = std::numeric_limits<float>::max();
-    float minDist3d = 0.0f;
+    float minDist3d = std::numeric_limits<float>::max();
 
     for (uint32 i = 0; i < polyPathSize; ++i)
     {
@@ -135,22 +145,21 @@ dtPolyRef PathFinder::getPathPolyByPosition(const dtPolyRef* polyPath, uint32 po
         if (dtStatusFailed(m_navMeshQuery->closestPointOnPoly(polyPath[i], point, closestPoint, nullptr)))
             continue;
 
-        float d = dtVdist2DSqr(point, closestPoint);
-        if (d < minDist2d)
+        float d = dtVdistSqr(point, closestPoint);
+        if (d < minDist3d)
         {
-            minDist2d = d;
+            minDist3d = d;
             nearestPoly = polyPath[i];
-            minDist3d = dtVdistSqr(point, closestPoint);
         }
 
-        if (minDist2d < 1.0f) // shortcut out - close enough for us
+        if (minDist3d < 1.0f) // shortcut out - close enough for us
             break;
     }
 
     if (distance)
         *distance = dtMathSqrtf(minDist3d);
 
-    return (minDist2d < 3.0f) ? nearestPoly : INVALID_POLYREF;
+    return (minDist3d < 3.0f) ? nearestPoly : INVALID_POLYREF;
 }
 
 dtPolyRef PathFinder::getPolyByLocation(const float* point, float* distance) const
@@ -688,8 +697,16 @@ void PathFinder::NormalizePath()
     if (!sWorld.getConfig(CONFIG_BOOL_PATH_FIND_NORMALIZE_Z))
         return;
 
+    GenericTransport* transport = m_sourceUnit->GetTransport();
+
     for (auto& m_pathPoint : m_pathPoints)
+    {
+        if (transport)
+            transport->CalculatePassengerPosition(m_pathPoint.x, m_pathPoint.y, m_pathPoint.z);
         m_sourceUnit->UpdateAllowedPositionZ(m_pathPoint.x, m_pathPoint.y, m_pathPoint.z);
+        if (transport)
+            transport->CalculatePassengerOffset(m_pathPoint.x, m_pathPoint.y, m_pathPoint.z);
+    }
 }
 
 void PathFinder::BuildShortcut()
@@ -774,6 +791,9 @@ NavTerrain PathFinder::getNavTerrain(float x, float y, float z) const
 
 bool PathFinder::HaveTile(const Vector3& p) const
 {
+    if (m_sourceUnit->GetTransport())
+        return true;
+
     int tx = -1, ty = -1;
     float point[VERTEX_SIZE] = {p.y, p.z, p.x};
 

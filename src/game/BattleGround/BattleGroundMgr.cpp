@@ -2120,6 +2120,7 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
                     case ARENA_TYPE_5v5:
                         sortedTeams[2].push_back(at);
                         break;
+                    default: break;
                 }
             }
         }
@@ -2186,6 +2187,8 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
         player->SetTitle(titleEntries[3], true);
         player->SetTitle(titleEntries[4], true);
         player->SaveTitles();
+        player->ModifyHonorPoints(player->GetArenaPoints() * 4);
+        player->SetArenaPoints(0);
     });
 
     // Remove Gladiator, Duelist and Rival from every offline player
@@ -2197,6 +2200,8 @@ void BattleGroundMgr::RewardArenaSeason(uint32 seasonId)
     CharacterDatabase.PExecute("UPDATE characters a SET knownTitles ="
         "CONCAT(SUBSTRING_INDEX(knownTitles, ' ', 1), ' ', CAST(TRIM(SUBSTR(knownTitles, LOCATE(' ', knownTitles)))  AS UNSIGNED) &~0x00000001)"
         "WHERE(CAST(TRIM(SUBSTR(knownTitles, LOCATE(' ', knownTitles)))  AS UNSIGNED) & 0x00000001) != 0");
+
+    CharacterDatabase.PExecute("UPDATE characters SET totalHonorPoints=4*arenaPoints,arenaPoints=0");
 
     for (auto& data : playerRanks)
     {

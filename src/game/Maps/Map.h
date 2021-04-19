@@ -55,7 +55,9 @@ class BattleGround;
 class GridMap;
 class GameObjectModel;
 class WeatherSystem;
+class GenericTransport;
 namespace MaNGOS { struct ObjectUpdater; }
+class Transport;
 
 // GCC have alternative #pragma pack(N) syntax and old gcc version not support pack(push,N), also any gcc version not support it at some platform
 #if defined( __GNUC__ )
@@ -148,6 +150,7 @@ class Map : public GridRefManager<NGridType>
 
         void PlayerRelocation(Player*, float x, float y, float z, float orientation);
         void CreatureRelocation(Creature* creature, float x, float y, float z, float ang);
+        void GameObjectRelocation(GameObject* go, float x, float y, float z, float orientation, bool respawnRelocationOnFail = true);
 
         template<class T, class CONTAINER> void Visit(const Cell& cell, TypeContainerVisitor<T, CONTAINER>& visitor);
 
@@ -171,7 +174,7 @@ class Map : public GridRefManager<NGridType>
 
         void ResetGridExpiry(NGridType& grid, float factor = 1) const
         {
-            grid.ResetTimeTracker((time_t)((float)i_gridExpiry * factor));
+            grid.ResetTimeTracker((time_t)((double)i_gridExpiry * factor));
         }
 
         time_t GetGridExpiry(void) const { return i_gridExpiry; }
@@ -293,7 +296,7 @@ class Map : public GridRefManager<NGridType>
         void PlayDirectSoundToMap(uint32 soundId, uint32 zoneId = 0) const;
 
         // Dynamic VMaps
-        float GetHeight(float x, float y, float z) const;
+        float GetHeight(float x, float y, float z, bool swim = false) const;
         bool GetHeightInRange(float x, float y, float& z, float maxSearchDist = 4.0f) const;
         bool IsInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, bool ignoreM2Model) const;
         bool GetHitPosition(float srcX, float srcY, float srcZ, float& destX, float& destY, float& destZ, float modifyDist) const;
@@ -339,6 +342,13 @@ class Map : public GridRefManager<NGridType>
 
         Messager<Map>& GetMessager() { return m_messager; }
 
+        GenericTransport* GetTransport(ObjectGuid guid);
+
+        void AddTransport(Transport* transport);
+        void RemoveTransport(Transport* transport);
+
+        bool CanSpawn(TypeID typeId, uint32 dbGuid);
+
     private:
         void LoadMapAndVMap(int gx, int gy);
 
@@ -348,6 +358,7 @@ class Map : public GridRefManager<NGridType>
 
         void SendInitTransports(Player* player) const;
         void SendRemoveTransports(Player* player) const;
+        void LoadTransports();
 
         bool CreatureCellRelocation(Creature* c, const Cell& new_cell);
 
@@ -419,6 +430,7 @@ class Map : public GridRefManager<NGridType>
         // Map local low guid counters
         ObjectGuidGenerator<HIGHGUID_UNIT> m_CreatureGuids;
         ObjectGuidGenerator<HIGHGUID_GAMEOBJECT> m_GameObjectGuids;
+        ObjectGuidGenerator<HIGHGUID_TRANSPORT> m_transportGuids;
         ObjectGuidGenerator<HIGHGUID_DYNAMICOBJECT> m_DynObjectGuids;
         ObjectGuidGenerator<HIGHGUID_PET> m_PetGuids;
 
@@ -436,6 +448,11 @@ class Map : public GridRefManager<NGridType>
 
         // WeatherSystem
         WeatherSystem* m_weatherSystem;
+
+        // Transports
+        typedef std::set<Transport*> TransportSet;
+        TransportSet m_transports;
+        TransportSet::iterator m_transportsIterator;
 
         std::unordered_map<uint32, std::set<ObjectGuid>> m_spawnedCount;
 };

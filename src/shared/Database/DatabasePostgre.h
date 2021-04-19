@@ -29,7 +29,7 @@
 #include <winsock2.h>
 #include <postgre/libpq-fe.h>
 #else
-#include <libpq-fe.h>
+#include <postgresql/libpq-fe.h>
 #endif
 
 class PostgreSQLConnection : public SqlConnection

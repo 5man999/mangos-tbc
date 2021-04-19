@@ -215,12 +215,16 @@ void instance_karazhan::OnObjectCreate(GameObject* pGo)
 void instance_karazhan::OnCreatureRespawn(Creature* creature)
 {
     if (creature->GetEntry() == NPC_BLIZZARD)
+    {
         creature->AI()->SetReactState(REACT_PASSIVE);
+    }
     else if (creature->GetEntry() == NPC_INFERNAL)
+    {
         if (GetData(TYPE_MALCHEZZAR) == IN_PROGRESS)
             return;
         else
             creature->ForcedDespawn(1);
+    }
 }
 
 void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
@@ -282,7 +286,12 @@ void instance_karazhan::SetData(uint32 uiType, uint32 uiData)
             break;
         case TYPE_CHESS:
             if (uiData == DONE)
+            {
+                Player* creditedPlayer = GetPlayerInMap(true, false);
+                if (instance->IsRaidOrHeroicDungeon() && creditedPlayer)
+                    static_cast<DungeonMap*>(instance)->PermBindAllPlayers(creditedPlayer);
                 DoFinishChessEvent();
+            }
             else if (uiData == FAIL)
                 DoFailChessEvent();
             else if (uiData == IN_PROGRESS || uiData == SPECIAL)

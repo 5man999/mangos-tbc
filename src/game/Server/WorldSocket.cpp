@@ -26,6 +26,7 @@
 #include "ByteBuffer.h"
 #include "Addons/AddonHandler.h"
 #include "Server/Opcodes.h"
+#include "Server/PacketLog.h"
 #include "Database/DatabaseEnv.h"
 #include "Auth/Sha1.h"
 #include "Server/WorldSession.h"
@@ -85,8 +86,14 @@ void WorldSocket::SendPacket(const WorldPacket& pct, bool immediate)
     if (IsClosed())
         return;
 
+    if (sPacketLog->CanLogPacket())
+        sPacketLog->LogPacket(pct, SERVER_TO_CLIENT, GetRemoteIpAddress(), GetRemotePort());
+
     // Dump outgoing packet.
     sLog.outWorldPacketDump(GetRemoteEndpoint().c_str(), pct.GetOpcode(), pct.GetOpcodeName(), pct, false);
+
+    // encrypt thread unsafe due to being executed from map contexts frequently - TODO: move to post service context in future
+    std::lock_guard<std::mutex> guard(m_worldSocketMutex);
 
     ServerPktHeader header;
 
@@ -152,6 +159,7 @@ bool WorldSocket::ProcessIncomingData()
             return false;
         }
 
+        // thread safe due to always being called from service context
         m_crypt.DecryptRecv((uint8*)&header, sizeof(ClientPktHeader));
 
         EndianConvertReverse(header.size);
@@ -198,6 +206,9 @@ bool WorldSocket::ProcessIncomingData()
         pct->append(InPeak(), validBytesRemaining);
         ReadSkip(validBytesRemaining);
     }
+
+    if (sPacketLog->CanLogPacket())
+        sPacketLog->LogPacket(*pct, CLIENT_TO_SERVER, GetRemoteIpAddress(), GetRemotePort());
 
     sLog.outWorldPacketDump(GetRemoteEndpoint().c_str(), pct->GetOpcode(), pct->GetOpcodeName(), *pct, true);
 

@@ -768,46 +768,11 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPacket& recv_data)
     // ghost resurrected at enter attempt to dungeon with corpse (including fail enter cases)
     if (!player->IsAlive() && targetMapEntry->IsDungeon())
     {
-        uint32 corpseMapId = 0;
-        if (Corpse* corpse = player->GetCorpse())
-            corpseMapId = corpse->GetMapId();
-
-        // check back way from corpse to entrance
-        uint32 instance_map = corpseMapId;
-        do
-        {
-            // most often fast case
-            if (instance_map == targetMapEntry->MapID)
-                break;
-
-            InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(instance_map);
-            instance_map = instance ? instance->parent : 0;
-        }
-        while (instance_map);
-
-        // corpse not in dungeon or some linked deep dungeons
-        if (!instance_map)
-        {
-            player->GetSession()->SendAreaTriggerMessage("You cannot enter %s while in a ghost mode",
-                    targetMapEntry->name[player->GetSession()->GetSessionDbcLocale()]);
-            return;
-        }
-
-        // need find areatrigger to inner dungeon for landing point
-        if (at->target_mapId != corpseMapId)
-        {
-            if (AreaTrigger const* corpseAt = sObjectMgr.GetMapEntranceTrigger(corpseMapId))
-            {
-                at = corpseAt;
-                targetMapEntry = sMapStore.LookupEntry(at->target_mapId);
-                if (!targetMapEntry)
-                    return;
-            }
-        }
-
-        // now we can resurrect player, and then check teleport requirements
-        player->ResurrectPlayer(0.5f);
-        player->SpawnCorpseBones();
+        auto data = player->CheckAndRevivePlayerOnDungeonEnter(targetMapEntry, at->target_mapId);
+		if (!data.first)
+			return;
+		if (data.second)
+			at = data.second;
     }
 
     if (at->conditionId && !sObjectMgr.IsConditionSatisfied(at->conditionId, player, player->GetMap(), nullptr, CONDITION_FROM_AREATRIGGER_TELEPORT))
@@ -1091,7 +1056,7 @@ void WorldSession::HandleInspectOpcode(WorldPacket& recv_data)
     for (uint32 i = 0; i < talent_points; ++i)
         data << uint8(0);
 
-    if (sWorld.getConfig(CONFIG_BOOL_TALENTS_INSPECTING) || _player->isGameMaster())
+    if (sWorld.getConfig(CONFIG_BOOL_TALENTS_INSPECTING) || _player->IsGameMaster())
     {
         // find class talent tabs (all players have 3 talent tabs)
         uint32 const* talentTabIds = GetTalentTabPages(plr->getClass());
@@ -1532,7 +1497,7 @@ void WorldSession::HandleCommentatorModeOpcode(WorldPacket& recv_data)
     Player* _player = GetPlayer();
 
     // Allow commentator mode only for players in GM mode
-    if (!_player->isGameMaster())
+    if (!_player->IsGameMaster())
         return;
 
     // This opcode can be used in three ways:

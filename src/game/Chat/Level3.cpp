@@ -56,6 +56,7 @@
 #include "Server/SQLStorages.h"
 #include "Loot/LootMgr.h"
 #include "World/WorldState.h"
+#include "Arena/ArenaTeam.h"
 
 #include "Custom/CPlayer.h"
 
@@ -4618,7 +4619,7 @@ bool ChatHandler::HandleQuestCompleteCommand(char* args)
         if (uint32 spell_id = pQuest->ReqSpell[i])
         {
             for (uint16 z = 0; z < creaturecount; ++z)
-                player->CastedCreatureOrGO(creature, ObjectGuid(), spell_id);
+                player->CastedCreatureOrGO(creature, ObjectGuid((creature > 0 ? HIGHGUID_UNIT : HIGHGUID_GAMEOBJECT), uint32(std::abs(creature)), 1u), spell_id);
         }
         else if (creature > 0)
         {
@@ -5577,7 +5578,9 @@ bool ChatHandler::HandleCastCommand(char* args)
     if (spellInfo->Targets && !target)
         target = m_session->GetPlayer();
 
-    m_session->GetPlayer()->CastSpell(target, spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    SpellCastResult result = m_session->GetPlayer()->CastSpell(target, spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    if (result != SPELL_CAST_OK)
+        PSendSysMessage("Spell resulted in fail %u", uint32(result));
 
     return true;
 }
@@ -5605,7 +5608,9 @@ bool ChatHandler::HandleCastBackCommand(char* args)
 
     caster->SetFacingToObject(m_session->GetPlayer());
 
-    caster->CastSpell(m_session->GetPlayer(), spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    SpellCastResult result = caster->CastSpell(m_session->GetPlayer(), spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    if (result != SPELL_CAST_OK)
+        PSendSysMessage("Spell resulted in fail %u", uint32(result));
 
     return true;
 }
@@ -5642,7 +5647,9 @@ bool ChatHandler::HandleCastDistCommand(char* args)
     float x, y, z;
     m_session->GetPlayer()->GetClosePoint(x, y, z, dist);
 
-    m_session->GetPlayer()->CastSpell(x, y, z, spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    SpellCastResult result = m_session->GetPlayer()->CastSpell(x, y, z, spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    if (result != SPELL_CAST_OK)
+        PSendSysMessage("Spell resulted in fail %u", uint32(result));
     return true;
 }
 
@@ -5675,7 +5682,9 @@ bool ChatHandler::HandleCastTargetCommand(char* args)
 
     caster->SetFacingToObject(m_session->GetPlayer());
 
-    caster->CastSpell(caster->GetVictim(), spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    SpellCastResult result = caster->CastSpell(caster->GetVictim(), spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    if (result != SPELL_CAST_OK)
+        PSendSysMessage("Spell resulted in fail %u", uint32(result));
 
     return true;
 }
@@ -5736,7 +5745,9 @@ bool ChatHandler::HandleCastSelfCommand(char* args)
     if (!triggered && *args)                                // can be fail also at syntax error
         return false;
 
-    target->CastSpell(target, spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    SpellCastResult result = target->CastSpell(target, spell, triggered ? TRIGGERED_OLD_TRIGGERED : TRIGGERED_NONE);
+    if (result != SPELL_CAST_OK)
+        PSendSysMessage("Spell resulted in fail %u", uint32(result));
 
     return true;
 }
@@ -6334,11 +6345,41 @@ bool ChatHandler::HandleArenaSeasonRewardsCommand(char* args)
     return true;
 }
 
-bool ChatHandler::HandleArenaDataReset(char* /*args*/)
+bool ChatHandler::HandleArenaDataReset(char* args)
 {
+    uint32 bulgarianValue;
+    if (!ExtractUInt32(&args, bulgarianValue) || bulgarianValue != 42)
+    {
+        SendSysMessage("For this command to work, add 42 as a parameter. Note, this resets data for all teams on the whole realm.");
+        return false;
+    }
+
     PSendSysMessage("Resetting all arena data.");
     sBattleGroundMgr.ResetAllArenaData();
     return true;
+}
+
+bool ChatHandler::HandleArenaTeamPointSet(char* args)
+{
+    char* teamName = ExtractQuotedArg(&args);
+    if (!teamName)
+        return false;
+
+    uint32 newRating;
+    if (!ExtractUInt32(&args, newRating))
+        return false;
+
+    std::string nameString = teamName;
+    ArenaTeam* team = sObjectMgr.GetArenaTeamByName(nameString);
+    if (!team)
+    {
+        PSendSysMessage("Could not find arena team with name %s", nameString.data());
+        SetSentErrorMessage(true);
+        return false;
+    }
+    team->SetRatingForAll(newRating);
+    team->SaveToDB();
+    return false;
 }
 
 bool ChatHandler::HandleModifyGenderCommand(char* args)
@@ -6740,6 +6781,50 @@ bool ChatHandler::HandleWarEffortCommand(char* args)
         return true;
     }
     sWorldState.HandleWarEffortPhaseTransition(param);
+    return true;
+}
+
+bool ChatHandler::HandleSunsReachReclamationPhaseCommand(char* args)
+{
+    uint32 param;
+    if (!ExtractUInt32(&args, param))
+    {
+        PSendSysMessage("%s", sWorldState.GetSunsReachPrintout().data());
+        return true;
+    }
+    sWorldState.HandleSunsReachPhaseTransition(param);
+    return true;
+}
+
+bool ChatHandler::HandleSunsReachReclamationSubPhaseCommand(char* args)
+{
+    uint32 param;
+    if (!ExtractUInt32(&args, param))
+    {
+        PSendSysMessage("%s", sWorldState.GetSunsReachPrintout().data());
+        return true;
+    }
+    sWorldState.HandleSunsReachSubPhaseTransition(param);
+    return true;
+}
+
+bool ChatHandler::HandleSunsReachReclamationCounterCommand(char* args)
+{
+    uint32 index;
+    if (!ExtractUInt32(&args, index) || index >= COUNTERS_MAX)
+    {
+        PSendSysMessage("Enter valid index for counter.");
+        return true;
+    }
+
+    uint32 value;
+    if (!ExtractUInt32(&args, value))
+    {
+        PSendSysMessage("Enter valid value for counter.");
+        return true;
+    }
+
+    sWorldState.SetSunsReachCounter(SunsReachCounters(index), value);
     return true;
 }
 

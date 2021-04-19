@@ -512,6 +512,7 @@ enum AtLoginFlags
     // AT_LOGIN_RESET_PET_TALENTS = 0x10, -- used in post-3.x
     AT_LOGIN_FIRST                = 0x20,
     AT_LOGIN_RESET_TAXINODES      = 0x40,
+    AT_LOGIN_ADD_BG_DESERTER      = 0x80
 };
 
 typedef std::map<uint32, QuestStatusData> QuestStatusMap;
@@ -920,7 +921,7 @@ class Player : public Unit
         void AddToWorld() override;
         void RemoveFromWorld() override;
 
-        bool TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options = 0, AreaTrigger const* at = nullptr);
+        bool TeleportTo(uint32 mapid, float x, float y, float z, float orientation, uint32 options = 0, AreaTrigger const* at = nullptr, GenericTransport* transport = nullptr);
 
         bool TeleportTo(WorldLocation const& loc, uint32 options = 0)
         {
@@ -972,7 +973,7 @@ class Player : public Unit
         void SetAcceptTicket(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_GM_ACCEPT_TICKETS; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_ACCEPT_TICKETS; }
         bool isAcceptWhispers() const { return (m_ExtraFlags & PLAYER_EXTRA_ACCEPT_WHISPERS) != 0; }
         void SetAcceptWhispers(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_ACCEPT_WHISPERS; else m_ExtraFlags &= ~PLAYER_EXTRA_ACCEPT_WHISPERS; }
-        bool isGameMaster() const { return m_ExtraFlags & PLAYER_EXTRA_GM_ON; }
+        bool IsGameMaster() const { return m_ExtraFlags & PLAYER_EXTRA_GM_ON; }
         void SetGameMaster(bool on);
         bool isGMChat() const;
         void SetGMChat(bool on) { if (on) m_ExtraFlags |= PLAYER_EXTRA_GM_CHAT; else m_ExtraFlags &= ~PLAYER_EXTRA_GM_CHAT; }
@@ -1494,8 +1495,6 @@ class Player : public Unit
         bool IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) const;
         bool IsImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index, bool castOnSelf) const override;
 
-        void KnockBackFrom(Unit* target, float horizontalSpeed, float verticalSpeed);
-
         void SendProficiency(ItemClass itemClass, uint32 itemSubclassMask) const;
         void SendInitialSpells() const;
         void SendUnlearnSpells() const;
@@ -1726,6 +1725,7 @@ class Player : public Unit
         void ResurrectPlayer(float restore_percent, bool applySickness = false);
         void BuildPlayerRepop();
         void RepopAtGraveyard();
+        std::pair<bool, AreaTrigger const*> CheckAndRevivePlayerOnDungeonEnter(MapEntry const* targetMapEntry, uint32 targetMapId);
 
         void DurabilityLossAll(double percent, bool inventory);
         void DurabilityLoss(Item* item, double percent);
@@ -1774,6 +1774,9 @@ class Player : public Unit
         void LearnDefaultSkills();
 
         virtual uint32 GetSpellRank(SpellEntry const* spellInfo) override;
+
+        bool IsLaunched() const { return m_launched; }
+        void SetLaunched(bool apply) { m_launched = apply; }
 
         WorldLocation& GetTeleportDest() { return m_teleport_dest; }
         bool IsBeingTeleported() const { return m_semaphoreTeleport_Near || m_semaphoreTeleport_Far; }
@@ -1895,8 +1898,9 @@ class Player : public Unit
         void SendDirectMessage(WorldPacket const& data) const;
 
         void SendAuraDurationsForTarget(Unit* target);
+        void SendAuraDurationsOnLogin(bool visible); // uses different packets
 
-        PlayerMenu* PlayerTalkClass;
+        PlayerMenu* GetPlayerMenu() const { return m_playerMenu.get(); }
         std::vector<ItemSetEffect*> ItemSetEff;
 
         /*********************************************************/
@@ -2080,16 +2084,6 @@ class Player : public Unit
 
         ObjectGuid const& GetFarSightGuid() const { return GetGuidValue(PLAYER_FARSIGHT); }
 
-        // Transports
-        Transport* GetTransport() const { return m_transport; }
-        void SetTransport(Transport* t) { m_transport = t; }
-
-        float GetTransOffsetX() const { return m_movementInfo->GetTransportPos()->x; }
-        float GetTransOffsetY() const { return m_movementInfo->GetTransportPos()->y; }
-        float GetTransOffsetZ() const { return m_movementInfo->GetTransportPos()->z; }
-        float GetTransOffsetO() const { return m_movementInfo->GetTransportPos()->o; }
-        uint32 GetTransTime() const { return m_movementInfo->GetTransportTime(); }
-
         uint32 GetSaveTimer() const { return m_nextSave; }
         void   SetSaveTimer(uint32 timer) { m_nextSave = timer; }
 
@@ -2135,6 +2129,7 @@ class Player : public Unit
         bool HasAtLoginFlag(AtLoginFlags f) const { return (m_atLoginFlags & f) != 0; }
         void SetAtLoginFlag(AtLoginFlags f) { m_atLoginFlags |= f; }
         void RemoveAtLoginFlag(AtLoginFlags f, bool in_db_also = false);
+        static bool ValidateAppearance(uint8 race, uint8 class_, uint8 gender, uint8 hairID, uint8 hairColor, uint8 faceID, uint8 facialHair, uint8 skinColor, bool create = false);
 
         LookingForGroup m_lookingForGroup;
 
@@ -2454,9 +2449,6 @@ class Player : public Unit
         RestType m_restType;
         //////////////////// Rest System/////////////////////
 
-        // Transports
-        Transport* m_transport;
-
         uint32 m_resetTalentsCost;
         time_t m_resetTalentsTime;
         uint32 m_usedTalentCount;
@@ -2517,6 +2509,7 @@ class Player : public Unit
 
         GridReference<Player> m_gridRef;
         MapReference m_mapRef;
+        std::unique_ptr<PlayerMenu> m_playerMenu;
 
 #ifdef BUILD_PLAYERBOT
         PlayerbotAI* m_playerbotAI;
@@ -2543,6 +2536,7 @@ class Player : public Unit
         // Current teleport data
         WorldLocation m_teleport_dest;
         uint32 m_teleport_options;
+        ObjectGuid m_teleportTransport;
         bool m_semaphoreTeleport_Near;
         bool m_semaphoreTeleport_Far;
 
@@ -2567,6 +2561,8 @@ class Player : public Unit
         uint32 m_timeSyncServer;
 
         float m_energyRegenRate;
+
+        bool m_launched;
 
         std::unique_ptr<Spell> m_queuedSpell;
 

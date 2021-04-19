@@ -101,6 +101,7 @@ CreatureEventAI::CreatureEventAI(Creature* creature) : CreatureAI(creature),
     m_throwAIEventMask(0),
     m_throwAIEventStep(0),
     m_LastSpellMaxRange(0),
+    m_despawnAggregationMask(0),
     m_rangedMode(false),
     m_rangedModeSetting(TYPE_NONE),
     m_chaseDistance(0.f),
@@ -455,11 +456,27 @@ bool CreatureEventAI::CheckEvent(CreatureEventAIHolder& holder, Unit* actionInvo
         }
         case EVENT_T_FRIENDLY_MISSING_BUFF:
         {
-            if (!m_creature->IsInCombat())
-                return false;
-
+            // 0 = Only in combat
+            // 1 = Out and in combat
+            // 2 = Only out of combat
             CreatureList pList;
-            DoFindFriendlyMissingBuff(pList, (float)event.friendly_buff.radius, event.friendly_buff.spellId);
+
+            if (event.friendly_buff.inCombat == 0)
+            {
+                if (!m_creature->IsInCombat())
+                    return false;
+                
+                DoFindFriendlyMissingBuff(pList, (float)event.friendly_buff.radius, event.friendly_buff.spellId, false);
+            }
+            else if (event.friendly_buff.inCombat == 1)            
+                DoFindFriendlyMissingBuff(pList, (float)event.friendly_buff.radius, event.friendly_buff.spellId, true);            
+            else if (event.friendly_buff.inCombat == 2)
+            {
+                if (m_creature->IsInCombat())
+                    return false;
+                                
+                DoFindFriendlyMissingBuff(pList, (float)event.friendly_buff.radius, event.friendly_buff.spellId, true);
+            }            
 
             // List is empty
             if (pList.empty())
@@ -822,6 +839,8 @@ bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
                     selectFlags |= SELECT_FLAG_PLAYER;
                 if (action.cast.castFlags & CAST_AURA_NOT_PRESENT)
                     selectFlags |= SELECT_FLAG_NOT_AURA;
+                if (action.cast.castFlags & CAST_TARGET_CASTING)
+                    selectFlags |= SELECT_FLAG_PLAYER_CASTING;
             }
 
             Unit* target = GetTargetByType(action.cast.target, actionInvoker, AIEventSender, eventTarget, failedTargetSelection, spellId, selectFlags);
@@ -969,7 +988,10 @@ bool CreatureEventAI::ProcessAction(CreatureEventAI_Action const& action, uint32
             break;
         }
         case ACTION_T_EVADE:
-            EnterEvadeMode();
+            if (action.evade.combatOnly)
+                m_creature->CombatStopWithPets(true);
+            else
+                EnterEvadeMode();
             break;
         case ACTION_T_FLEE_FOR_ASSIST:
             if (!DoFlee())
@@ -1571,6 +1593,9 @@ void CreatureEventAI::EnterCombat(Unit* enemy)
                     i.enabled = true;
                 break;
             // Reset some special combat timers using repeatMin/Max
+            case EVENT_T_FRIENDLY_HP:
+            case EVENT_T_FRIENDLY_IS_CC:
+            case EVENT_T_FRIENDLY_MISSING_BUFF:
             case EVENT_T_SELECT_ATTACKING_TARGET:
                 if (i.UpdateRepeatTimer(m_creature, event.timer.repeatMin, event.timer.repeatMax))
                     i.enabled = true;
@@ -1811,11 +1836,21 @@ void CreatureEventAI::DoFindFriendlyCC(CreatureList& list, float range) const
     Cell::VisitGridObjects(m_creature, searcher, range);
 }
 
-void CreatureEventAI::DoFindFriendlyMissingBuff(CreatureList& list, float range, uint32 spellId) const
+void CreatureEventAI::DoFindFriendlyMissingBuff(CreatureList& list, float range, uint32 spellId, bool inCombat) const
 {
-    MaNGOS::FriendlyMissingBuffInRangeCheck u_check(m_creature, range, spellId);
-    MaNGOS::CreatureListSearcher<MaNGOS::FriendlyMissingBuffInRangeCheck> searcher(list, u_check);
-    Cell::VisitGridObjects(m_creature, searcher, range);
+    if (inCombat == false)
+    {
+        MaNGOS::FriendlyMissingBuffInRangeInCombatCheck u_check(m_creature, range, spellId);
+        MaNGOS::CreatureListSearcher<MaNGOS::FriendlyMissingBuffInRangeInCombatCheck> searcher(list, u_check);
+        Cell::VisitGridObjects(m_creature, searcher, range);
+    }
+    else if (inCombat == true)
+    {
+        MaNGOS::FriendlyMissingBuffInRangeNotInCombatCheck u_check(m_creature, range, spellId);
+        MaNGOS::CreatureListSearcher<MaNGOS::FriendlyMissingBuffInRangeNotInCombatCheck> searcher(list, u_check);
+
+        Cell::VisitGridObjects(m_creature, searcher, range);
+    }
 }
 
 //*********************************

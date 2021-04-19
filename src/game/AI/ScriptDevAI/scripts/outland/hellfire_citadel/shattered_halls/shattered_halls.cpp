@@ -126,7 +126,7 @@ void instance_shattered_halls::SetData(uint32 uiType, uint32 uiData)
             if (uiData == DONE)
             {
                 DoUseDoorOrButton(GO_NETHEKURSE_DOOR);
-                DoUseDoorOrButton(GO_NETHEKURSE_ENTER_DOOR);
+                DoUseOpenableObject(GO_NETHEKURSE_ENTER_DOOR, true);
             }
             break;
         case TYPE_OMROGG:
@@ -302,7 +302,7 @@ void instance_shattered_halls::Update(uint32 uiDiff)
                 {
                     blaze.second = 2000;
                     if (GameObject* blazeGo = instance->GetGameObject(blaze.first))
-                        gauntlet->CastSpell(nullptr, SPELL_FLAMES, TRIGGERED_NONE, nullptr, nullptr, blazeGo->GetObjectGuid());
+                        blazeGo->CastSpell(gauntlet, nullptr, SPELL_FLAMES, TRIGGERED_NONE, nullptr, nullptr, blazeGo->GetObjectGuid());
                 }
                 else
                     blaze.second -= uiDiff;
@@ -784,7 +784,7 @@ struct npc_Shattered_Hand_Scout : public ScriptedAI
 
     void MoveInLineOfSight(Unit* pWho) override
     {
-        if (pWho->GetTypeId() == TYPEID_PLAYER && !static_cast<Player*>(pWho)->isGameMaster() && pWho->GetDistance(m_creature) <= 50.f)
+        if (pWho->GetTypeId() == TYPEID_PLAYER && !static_cast<Player*>(pWho)->IsGameMaster() && pWho->GetDistance(m_creature) <= 50.f)
             if (!m_bRunning)
                 DoStartRunning();
     }
@@ -848,7 +848,7 @@ struct npc_Shattered_Hand_Scout : public ScriptedAI
 
 bool AreaTrigger_at_shattered_halls(Player* pPlayer, AreaTriggerEntry const* /*pAt*/)
 {
-    if (pPlayer->isGameMaster() || !pPlayer->IsAlive())
+    if (pPlayer->IsGameMaster() || !pPlayer->IsAlive())
         return false;
 
     instance_shattered_halls* pInstance = (instance_shattered_halls*)pPlayer->GetInstanceData();

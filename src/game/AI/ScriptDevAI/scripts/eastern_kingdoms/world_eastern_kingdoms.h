@@ -4,12 +4,16 @@
 
 enum
 {
+    // TYPE_SHADE_OF_HEADLESS_HORSEMAN = 1000, // High number against collisions
+
     // Quest 6403
     NPC_JONATHAN                = 466,
     NPC_WRYNN                   = 1747,
     NPC_BOLVAR                  = 1748,
     NPC_PRESTOR                 = 1749,
     NPC_WINDSOR                 = 12580,
+
+    NPC_FALSTAD_WILDHAMMER      = 5635,
 };
 
 enum BFTDP_NPCs

@@ -617,7 +617,11 @@ void ScriptMgr::LoadScripts(ScriptMapMapName& scripts, const char* tablename)
                 break;
             }
             case SCRIPT_COMMAND_MODIFY_NPC_FLAGS:           // 29
+            {
+                if (tmp.npcFlag.change_flag > 2)
+                    sLog.outErrorDb("Table `%s` has invalid change flag (datalong2 = %u) in SCRIPT_COMMAND_MODIFY_NPC_FLAGS for script id %u", tablename, tmp.npcFlag.change_flag, tmp.id);
                 break;
+            }
             case SCRIPT_COMMAND_SEND_TAXI_PATH:             // 30
             {
                 if (!sTaxiPathStore.LookupEntry(tmp.sendTaxiPath.taxiPathId))
@@ -709,7 +713,7 @@ void ScriptMgr::LoadScripts(ScriptMapMapName& scripts, const char* tablename)
                 }
                 break;
             }
-            case SCRIPT_COMMAND_SET_FLY:                    // 39
+            case SCRIPT_COMMAND_SET_HOVER:                    // 39
             case SCRIPT_COMMAND_DESPAWN_GO:                 // 40
             case SCRIPT_COMMAND_RESPAWN:                    // 41
                 break;
@@ -778,6 +782,12 @@ void ScriptMgr::LoadScripts(ScriptMapMapName& scripts, const char* tablename)
                     sLog.outErrorDb("Table `%s` uses invalid current spell type %u (must be smaller or equal to %u) for script id %u.", tablename, tmp.interruptSpell.currentSpellType, CURRENT_MAX_SPELL - 1, tmp.id);
                     continue;
                 }
+                break;
+            }
+            case SCRIPT_COMMAND_MODIFY_UNIT_FLAGS:          // 48
+            {
+                if (tmp.unitFlag.change_flag > 2)
+                    sLog.outErrorDb("Table `%s` has invalid change flag (datalong2 = %u) in SCRIPT_COMMAND_MODIFY_UNIT_FLAGS for script id %u", tablename, tmp.unitFlag.change_flag, tmp.id);
                 break;
             }
             default:
@@ -1147,7 +1157,7 @@ bool ScriptAction::GetScriptProcessTargets(WorldObject* pOrigSource, WorldObject
             // TODO Maybe load related grid if not already done? How to handle multi-map case?
             if (!pBuddy && m_script->command != SCRIPT_COMMAND_TERMINATE_SCRIPT)
             {
-                sLog.outDetail(" DB-SCRIPTS: Process table `%s` id %u, command %u has buddy by guid %u not loaded in map %u (data-flags %u), skipping.", m_table, m_script->id, m_script->command, m_script->searchRadiusOrGuid, m_map->GetId(), m_script->data_flags);
+                DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, " DB-SCRIPTS: Process table `%s` id %u, command %u has buddy by guid %u not loaded in map %u (data-flags %u), skipping.", m_table, m_script->id, m_script->command, m_script->searchRadiusOrGuid, m_map->GetId(), m_script->data_flags);
                 return false;
             }
         }
@@ -1628,7 +1638,10 @@ bool ScriptAction::HandleScriptStep()
             uint32 factionId = m_script->textId[1];
             uint32 modelId = m_script->textId[2];
 
-            Creature* pCreature = pSource->SummonCreature(m_script->summonCreature.creatureEntry, x, y, z, o, m_script->summonCreature.despawnDelay ? TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN : TEMPSPAWN_DEAD_DESPAWN, m_script->summonCreature.despawnDelay, (m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL) != 0, run, m_script->summonCreature.pathId, factionId, modelId);
+            TempSpawnSettings settings(pSource, m_script->summonCreature.creatureEntry, x, y, z, o, m_script->summonCreature.despawnDelay ? TEMPSPAWN_TIMED_OOC_OR_DEAD_DESPAWN : TEMPSPAWN_DEAD_DESPAWN, m_script->summonCreature.despawnDelay, (m_script->data_flags& SCRIPT_FLAG_COMMAND_ADDITIONAL) != 0, run, m_script->summonCreature.pathId, factionId, modelId);
+            settings.spawnDataEntry = m_script->textId[3];
+
+            Creature* pCreature = WorldObject::SummonCreature(settings, pSource->GetMap());
             if (!pCreature)
             {
                 sLog.outErrorDb(" DB-SCRIPTS: Process table `%s` id %u, command %u failed for creature (entry: %u).", m_table, m_script->id, m_script->command, m_script->summonCreature.creatureEntry);
@@ -1690,7 +1703,12 @@ bool ScriptAction::HandleScriptStep()
             if (LogIfNotGameObject(pTarget))
                 break;
 
-            ((GameObject*)pTarget)->Use((Unit*)pSource);
+            GameObject* go = static_cast<GameObject*>(pTarget);
+
+            if (m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL)
+                go->SendGameObjectCustomAnim(go->GetObjectGuid(), m_script->activateObject.animId);
+            else
+                go->Use((Unit*)pSource);
             break;
         }
         case SCRIPT_COMMAND_REMOVE_AURA:                    // 14
@@ -1811,14 +1829,14 @@ bool ScriptAction::HandleScriptStep()
             if (LogIfNotCreature(pSource))
                 break;
 
-            Creature* source = ((Creature*)pSource);
+            Creature* source = static_cast<Creature*>(pSource);
 
             // Consider add additional checks for cases where creature should not change movementType
             // (pet? already using same MMgen as script try to apply?)
 
             if (source->IsInCombat())
             {
-                sLog.outDebug(" DB-SCRIPTS: Process table `%s` id %u, SCRIPT_COMMAND_MOVEMENT called for movement change to %u with source guid %s but source is in combat and may lead to wrong behaviour: skipping.", m_table, m_script->id, m_script->movement.movementType, pSource->GetGuidStr().c_str());
+                DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, " DB-SCRIPTS: Process table `%s` id %u, SCRIPT_COMMAND_MOVEMENT called for movement change to %u with source guid %s but source is in combat and may lead to wrong behaviour: skipping.", m_table, m_script->id, m_script->movement.movementType, pSource->GetGuidStr().c_str());
                 break;
             }
 
@@ -1987,20 +2005,22 @@ bool ScriptAction::HandleScriptStep()
             if (LogIfNotCreature(pSource))
                 break;
 
-            // Add Flags
-            if (m_script->npcFlag.change_flag & 0x01)
-                pSource->SetFlag(UNIT_NPC_FLAGS, m_script->npcFlag.flag);
             // Remove Flags
-            else if (m_script->npcFlag.change_flag & 0x02)
+            if (m_script->npcFlag.change_flag == 0)
                 pSource->RemoveFlag(UNIT_NPC_FLAGS, m_script->npcFlag.flag);
+            // Add Flags
+            else if (m_script->npcFlag.change_flag == 1)
+                pSource->SetFlag(UNIT_NPC_FLAGS, m_script->npcFlag.flag);
             // Toggle Flags
-            else
+            else if (m_script->npcFlag.change_flag == 2)
             {
                 if (pSource->HasFlag(UNIT_NPC_FLAGS, m_script->npcFlag.flag))
                     pSource->RemoveFlag(UNIT_NPC_FLAGS, m_script->npcFlag.flag);
                 else
                     pSource->SetFlag(UNIT_NPC_FLAGS, m_script->npcFlag.flag);
             }
+            else
+                sLog.outErrorDb(" DB-SCRIPTS: Unexpected value %u used for script id %u, command %u.", m_script->npcFlag.flag, m_script->id, m_script->command);
 
             break;
         }
@@ -2095,17 +2115,17 @@ bool ScriptAction::HandleScriptStep()
                 if (!(m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL) && !pCreatureBuddy)
                 {
                     if (m_script->terminateScript.npcEntry)
-                        DEBUG_LOG("DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc entry(%u) was not found alive)", m_table, m_script->id, m_script->terminateScript.npcEntry);
+                        DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc entry(%u) was not found alive)", m_table, m_script->id, m_script->terminateScript.npcEntry);
                     else
-                        DEBUG_LOG("DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as no npc in pool id(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.poolId);
+                        DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as no npc in pool id(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.poolId);
                     result = true;
                 }
                 else if (m_script->data_flags & SCRIPT_FLAG_COMMAND_ADDITIONAL && pCreatureBuddy)
                 {
                     if (m_script->terminateScript.npcEntry)
-                        DEBUG_LOG("DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc entry(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.npcEntry);
+                        DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc entry(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.npcEntry);
                     else
-                        DEBUG_LOG("DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc in pool id(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.poolId);
+                        DETAIL_FILTER_LOG(LOG_FILTER_DB_SCRIPT, "DB-SCRIPTS: Process table `%s` id %u, terminate further steps of this script! (as searched npc in pool id(%u) was found alive)", m_table, m_script->id, m_script->terminateScript.poolId);
                     result = true;
                 }
             }
@@ -2273,7 +2293,7 @@ bool ScriptAction::HandleScriptStep()
             MailDraft(m_script->sendMail.mailTemplateId).SendMailTo(static_cast<Player*>(pTarget), sender, MAIL_CHECK_MASK_HAS_BODY, deliverDelay);
             break;
         }
-        case SCRIPT_COMMAND_SET_FLY:                        // 39
+        case SCRIPT_COMMAND_SET_HOVER:                      // 39
         {
             if (LogIfNotCreature(pSource))
                 break;
@@ -2287,7 +2307,7 @@ bool ScriptAction::HandleScriptStep()
                     pSource->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_FLY_ANIM);
             }
 
-            ((Creature*)pSource)->SetLevitate(m_script->fly.fly != 0);
+            ((Creature*)pSource)->SetHover(m_script->fly.fly);
             break;
         }
         case SCRIPT_COMMAND_DESPAWN_GO:                     // 40
@@ -2401,6 +2421,30 @@ bool ScriptAction::HandleScriptStep()
             Unit* unitSource = static_cast<Unit*>(pSource);
 
             unitSource->InterruptSpell((CurrentSpellTypes)m_script->interruptSpell.currentSpellType);
+            break;
+        }
+        case SCRIPT_COMMAND_MODIFY_UNIT_FLAGS:              // 48
+        {
+            if (LogIfNotCreature(pSource))
+                break;
+
+            // Remove Flags
+            if (m_script->unitFlag.change_flag == 0)
+                pSource->RemoveFlag(UNIT_FIELD_FLAGS, m_script->unitFlag.flag);
+            // Add Flags
+            else if (m_script->unitFlag.change_flag == 1)
+                pSource->SetFlag(UNIT_FIELD_FLAGS, m_script->unitFlag.flag);
+            // Toggle Flags
+            else if (m_script->unitFlag.change_flag == 2)
+            {
+                if (pSource->HasFlag(UNIT_FIELD_FLAGS, m_script->unitFlag.flag))
+                    pSource->RemoveFlag(UNIT_FIELD_FLAGS, m_script->unitFlag.flag);
+                else
+                    pSource->SetFlag(UNIT_FIELD_FLAGS, m_script->unitFlag.flag);
+            }
+            else
+                sLog.outErrorDb(" DB-SCRIPTS: Unexpected value %u used for script id %u, command %u.", m_script->unitFlag.flag, m_script->id, m_script->command);
+
             break;
         }
         default:

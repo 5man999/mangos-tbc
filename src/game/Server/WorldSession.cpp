@@ -94,7 +94,7 @@ WorldSession::WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, uint8
     LookingForGroup_auto_join(false), LookingForGroup_auto_add(true), m_muteTime(mute_time),
     _player(nullptr), m_Socket(sock ? sock->shared<WorldSocket>() : nullptr),
     m_requestSocket(nullptr), m_sessionState(WORLD_SESSION_STATE_CREATED),
-    _security(sec), _accountId(id), m_expansion(expansion), _logoutTime(0), m_playerSave(true),
+    _security(sec), _accountId(id), m_expansion(expansion), m_orderCounter(0), _logoutTime(0), m_playerSave(true),
     m_inQueue(false), m_playerLoading(false), m_playerLogout(false), m_playerRecentlyLogout(false),
     m_sessionDbcLocale(sWorld.GetAvailableDbcLocale(locale)), m_sessionDbLocaleIndex(sObjectMgr.GetStorageLocaleIndexFor(locale)),
     m_latency(0), m_tutorialState(TUTORIALDATA_UNCHANGED),
@@ -622,7 +622,7 @@ void WorldSession::LogoutPlayer()
             bg->EventPlayerLoggedOut(_player);
 
         ///- Teleport to home if the player is in an invalid instance
-        if (!_player->m_InstanceValid && !_player->isGameMaster())
+        if (!_player->m_InstanceValid && !_player->IsGameMaster())
         {
             _player->TeleportToHomebind();
             // this is a bad place to call for far teleport because we need player to be in world for successful logout
@@ -1154,16 +1154,16 @@ void WorldSession::SendPlaySpellVisual(ObjectGuid guid, uint32 spellArtKit) cons
     SendPacket(data);
 }
 
-void WorldSession::SynchronizeMovement(const MovementInfoPtr& movementInfo)
+void WorldSession::SynchronizeMovement(MovementInfoPtr movementInfo)
 {
-    int64 movementTime = (int64)movementInfo->GetTime() + m_timeSyncClockDelta;
+    int64 movementTime = (int64)movementInfo->ctime + m_timeSyncClockDelta;
     if (m_timeSyncClockDelta == 0 || movementTime < 0 || movementTime > 0xFFFFFFFF)
     {
         DETAIL_LOG("The computed movement time using clockDelta is erronous. Using fallback instead");
-        movementInfo->UpdateTime(World::GetCurrentMSTime());
+        movementInfo->stime = World::GetCurrentMSTime();
     }
     else
-        movementInfo->UpdateTime((uint32)movementTime);
+        movementInfo->stime = movementTime;
 }
 
 std::deque<uint32> WorldSession::GetOpcodeHistory()

@@ -40,7 +40,6 @@ EndContentData */
 #include "Grids/GridNotifiers.h"
 #include "Grids/GridNotifiersImpl.h"
 #include "Grids/CellImpl.h"
-#include "OutdoorPvP/OutdoorPvP.h"
 
 /* When you make a spell effect:
 - always check spell id and effect index
@@ -148,12 +147,6 @@ enum
     SPELL_SPIRIT_PARTICLES              = 17327,
     NPC_FRANCLORN_FORGEWRIGHT           = 8888,
     NPC_GAERIYAN                        = 9299,
-
-    // quest 11521
-    SPELL_EXPOSE_RAZORTHORN_ROOT        = 44935,
-    SPELL_SUMMON_RAZORTHORN_ROOT        = 44941,
-    NPC_RAZORTHORN_RAVAGER              = 24922,
-    GO_RAZORTHORN_DIRT_MOUND            = 187073,
 
     //  for quest 10584
     SPELL_PROTOVOLTAIC_MAGNETO_COLLECTOR = 37136,
@@ -394,24 +387,6 @@ bool EffectDummyCreature_spell_dummy_npc(Unit* pCaster, uint32 uiSpellId, SpellE
             }
             return true;
         }
-        case SPELL_EXPOSE_RAZORTHORN_ROOT:
-        {
-            if (uiEffIndex == EFFECT_INDEX_0)
-            {
-                if (pCreatureTarget->GetEntry() != NPC_RAZORTHORN_RAVAGER)
-                    return true;
-
-                if (GameObject* pMound = GetClosestGameObjectWithEntry(pCreatureTarget, GO_RAZORTHORN_DIRT_MOUND, 20.0f))
-                {
-                    if (pMound->GetRespawnTime() != 0)
-                        return true;
-
-                    pCreatureTarget->CastSpell(pCreatureTarget, SPELL_SUMMON_RAZORTHORN_ROOT, TRIGGERED_OLD_TRIGGERED);
-                    pMound->SetLootState(GO_JUST_DEACTIVATED);
-                }
-            }
-            return true;
-        }
         case SPELL_MELODIOUS_RAPTURE:
         {
             if (uiEffIndex == EFFECT_INDEX_0)
@@ -431,91 +406,6 @@ bool EffectDummyCreature_spell_dummy_npc(Unit* pCaster, uint32 uiSpellId, SpellE
 
     return false;
 }
-
-struct SpellStackingRulesOverride : public SpellScript
-{
-    enum : uint32
-    {
-        SPELL_POWER_INFUSION        = 10060,
-        SPELL_ARCANE_POWER          = 12042,
-        SPELL_MISDIRECTION          = 34477,
-    };
-
-    SpellCastResult OnCheckCast(Spell* spell, bool/* strict*/) const override
-    {
-        switch (spell->m_spellInfo->Id)
-        {
-            case SPELL_POWER_INFUSION:
-            {
-                // Patch 1.10.2 (2006-05-02):
-                // Power Infusion: This aura will no longer stack with Arcane Power. If you attempt to cast it on someone with Arcane Power, the spell will fail.
-                if (Unit* target = spell->m_targets.getUnitTarget())
-                    if (target->GetAuraCount(SPELL_ARCANE_POWER))
-                        return SPELL_FAILED_AURA_BOUNCED;
-                break;
-            }
-            case SPELL_MISDIRECTION:
-            {
-                // Patch 2.3.0 (2007-11-13):
-                // Misdirection: If a Hunter attempts to use this ability on a target which already has an active Misdirection, the spell will fail to apply due to a more powerful spell already being in effect.
-                if (Unit* target = spell->m_targets.getUnitTarget())
-                    if (target->HasAura(SPELL_MISDIRECTION))
-                        return SPELL_FAILED_AURA_BOUNCED;
-                break;
-            }
-        }
-
-        return SPELL_CAST_OK;
-    }
-};
-
-/*#####
-# spell_battleground_banner_trigger
-#
-# These are generic spells that handle player click on battleground banners; All spells are triggered by GO type 10
-# Contains following spells:
-# Arathi Basin: 23932, 23935, 23936, 23937, 23938
-# Alterac Valley: 24677
-# Isle of Conquest: 35092, 65825, 65826, 66686, 66687
-#####*/
-struct spell_battleground_banner_trigger : public SpellScript
-{
-    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const
-    {
-        // TODO: Fix when go casting is fixed
-        WorldObject* obj = spell->GetAffectiveCasterObject();
-
-        if (obj->IsGameObject() && spell->GetUnitTarget()->IsPlayer())
-        {
-            Player* player = static_cast<Player*>(spell->GetUnitTarget());
-            if (BattleGround* bg = player->GetBattleGround())
-                bg->HandlePlayerClickedOnFlag(player, static_cast<GameObject*>(obj));
-        }
-    }
-};
-
-/*#####
-# spell_outdoor_pvp_banner_trigger
-#
-# These are generic spells that handle player click on outdoor PvP banners; All spells are triggered by GO type 10
-# Contains following spells used in Zangarmarsh: 32433, 32438
-#####*/
-struct spell_outdoor_pvp_banner_trigger : public SpellScript
-{
-    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const
-    {
-        // TODO: Fix when go casting is fixed
-        WorldObject* obj = spell->GetAffectiveCasterObject();
-
-        if (obj->IsGameObject() && spell->GetUnitTarget()->IsPlayer())
-        {
-            Player* player = static_cast<Player*>(spell->GetUnitTarget());
-
-            if (OutdoorPvP* outdoorPvP = sOutdoorPvPMgr.GetScript(player->GetCachedZoneId()))
-                outdoorPvP->HandleGameObjectUse(player, static_cast<GameObject*>(obj));
-        }
-    }
-};
 
 struct GreaterInvisibilityMob : public AuraScript
 {
@@ -640,6 +530,78 @@ struct GettingSleepyAura : public AuraScript
     }
 };
 
+struct AllergiesAura : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (apply)
+            aura->ForcePeriodicity(10 * IN_MILLISECONDS);
+    }
+
+    void OnPeriodicDummy(Aura* aura) const override
+    {
+        if (urand(0, 2) > 0)
+            aura->GetTarget()->CastSpell(nullptr, 31428, TRIGGERED_OLD_TRIGGERED); // Sneeze
+    }
+};
+
+enum
+{
+    SPELL_USE_CORPSE = 33985,
+};
+
+struct RaiseDead : public SpellScript
+{
+    bool OnCheckTarget(const Spell* /*spell*/, Unit* target, SpellEffectIndex /*eff*/) const override
+    {
+        if (!target->IsCreature() || static_cast<Creature*>(target)->HasBeenHitBySpell(SPELL_USE_CORPSE))
+            return false;
+
+        return true;
+    }
+};
+
+struct UseCorpse : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    {
+        Unit* target = spell->GetUnitTarget();
+        if (!target || !target->IsCreature())
+            return;
+
+        static_cast<Creature*>(target)->RegisterHitBySpell(SPELL_USE_CORPSE);
+    }
+};
+
+struct SplitDamage : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (spell->m_spellInfo->Effect[effIdx] != SPELL_EFFECT_SCHOOL_DAMAGE)
+            return;
+
+        uint32 count = 0;
+        auto& targetList = spell->GetTargetList();
+        for (Spell::TargetList::const_iterator ihit = targetList.begin(); ihit != targetList.end(); ++ihit)
+            if (ihit->effectHitMask & (1 << effIdx))
+                ++count;
+
+        spell->SetDamage(spell->GetDamage() / count); // divide to all targets
+    }
+};
+
+struct TKDive : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (spell->m_spellInfo->Effect[effIdx] != SPELL_EFFECT_SCHOOL_DAMAGE)
+            return;
+
+        Unit* target = spell->GetUnitTarget();
+        spell->GetCaster()->AddThreat(target, 1000000.f);
+    }
+};
+
 void AddSC_spell_scripts()
 {
     Script* pNewScript = new Script;
@@ -653,13 +615,15 @@ void AddSC_spell_scripts()
     pNewScript->pEffectAuraDummy = &EffectAuraDummy_spell_aura_dummy_npc;
     pNewScript->RegisterSelf();
 
-    RegisterSpellScript<SpellStackingRulesOverride>("spell_stacking_rules_override");
     RegisterAuraScript<GreaterInvisibilityMob>("spell_greater_invisibility_mob");
     RegisterAuraScript<InebriateRemoval>("spell_inebriate_removal");
     RegisterSpellScript<AstralBite>("spell_astral_bite");
     RegisterSpellScript<FelInfusion>("spell_fel_infusion");
     RegisterAuraScript<AuchenaiPossess>("spell_auchenai_possess");
     RegisterAuraScript<GettingSleepyAura>("spell_getting_sleepy_aura");
-    RegisterSpellScript<spell_battleground_banner_trigger>("spell_battleground_banner_trigger");
-    RegisterSpellScript<spell_outdoor_pvp_banner_trigger>("spell_outdoor_pvp_banner_trigger");
+    RegisterAuraScript<AllergiesAura>("spell_allergies");
+    RegisterSpellScript<UseCorpse>("spell_use_corpse");
+    RegisterSpellScript<RaiseDead>("spell_raise_dead");
+    RegisterSpellScript<SplitDamage>("spell_split_damage");
+    RegisterSpellScript<TKDive>("spell_tk_dive");
 }

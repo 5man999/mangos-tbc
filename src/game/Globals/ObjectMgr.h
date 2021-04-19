@@ -159,6 +159,7 @@ struct MangosStringLocale
     BroadcastText const* broadcastText;
 };
 
+typedef std::unordered_map<uint32, CreatureSpawnTemplate> CreatureSpawnTemplateMap;
 typedef std::unordered_map<uint32 /*guid*/, CreatureData> CreatureDataMap;
 typedef CreatureDataMap::value_type CreatureDataPair;
 
@@ -485,7 +486,7 @@ class ObjectMgr
 
         std::unordered_map<uint32, std::vector<uint32>> const& GetCreatureSpawnEntry() const { return mCreatureSpawnEntryMap; }
 
-        void LoadGameobjectInfo();
+        std::vector<uint32> LoadGameobjectInfo();
 
         void PackGroupIds();
         Group* GetGroupById(uint32 id) const;
@@ -536,7 +537,7 @@ class ObjectMgr
         void LoadTaxiShortcuts();
         uint32 GetNearestTaxiNode(float x, float y, float z, uint32 mapid, Team team) const;
         void GetTaxiPath(uint32 source, uint32 destination, uint32& path, uint32& cost) const;
-        uint32 GetTaxiMountDisplayId(uint32 id, Team team, bool allowed_alt_team = false) const;
+        uint32 GetTaxiMountDisplayId(uint32 id, Team team) const;
 
         Quest const* GetQuestTemplate(uint32 quest_id) const
         {
@@ -688,6 +689,7 @@ class ObjectMgr
         void LoadCreatureAddons();
         void LoadCreatureClassLvlStats();
         void LoadCreatureConditionalSpawn();
+        void LoadCreatureSpawnDataTemplates();
         void LoadCreatureSpawnEntry();
         void LoadCreatureModelInfo();
         void LoadCreatureModelRace();
@@ -835,6 +837,12 @@ class ObjectMgr
         {
             CreatureDataPair const* dataPair = GetCreatureDataPair(guid);
             return dataPair ? &dataPair->second : nullptr;
+        }
+
+        CreatureSpawnTemplate const* GetCreatureSpawnTemplate(uint32 entry) const
+        {
+            auto itr = m_creatureSpawnTemplateMap.find(entry);
+            return itr != m_creatureSpawnTemplateMap.end() ? &(*itr).second : nullptr;
         }
 
         CreatureData* GetCreatureData(uint32 guid)
@@ -1293,13 +1301,15 @@ class ObjectMgr
         HalfNameMap PetHalfName0;
         HalfNameMap PetHalfName1;
 
-        typedef std::multimap<uint32 /*mapId*/, uint32 /*guid*/> ActiveCreatureGuidsOnMap;
+        typedef std::multimap<uint32 /*mapId*/, uint32 /*guid*/> ActiveObjectGuidsOnMap;
 
         // Array to store creature stats, Max creature level + 1 (for data alignement with in game level)
         CreatureClassLvlStats m_creatureClassLvlStats[DEFAULT_MAX_CREATURE_LEVEL + 1][MAX_CREATURE_CLASS][MAX_EXPANSION + 1];
 
         MapObjectGuids mMapObjectGuids;
-        ActiveCreatureGuidsOnMap m_activeCreatures;
+        ActiveObjectGuidsOnMap m_activeCreatures;
+        ActiveObjectGuidsOnMap m_activeGameObjects;
+        CreatureSpawnTemplateMap m_creatureSpawnTemplateMap;
         CreatureDataMap mCreatureDataMap;
         CreatureLocaleMap mCreatureLocaleMap;
         std::unordered_map<uint32, std::unordered_map<uint32, std::pair<uint32, uint32>>> m_creatureCooldownMap;

@@ -1,5 +1,5 @@
 # C(ontinued)-MaNGOS -- README
-[![Build Status](https://travis-ci.org/Lillecarl/mangos-tbc.svg?branch=b16)](https://travis-ci.org/Lillecarl/mangos-tbc)
+[![Windows](../../actions/workflows/windows.yml/badge.svg)](../../actions/workflows/windows.yml) [![Ubuntu](../../actions/workflows/ubuntu.yml/badge.svg)](../../actions/workflows/ubuntu.yml) [![MacOS](../../actions/workflows/macos.yml/badge.svg)](../../actions/workflows/macos.yml)
 
 ## Additional features
 * Serverside anticheat
@@ -16,19 +16,19 @@ This file is part of the CMaNGOS Project. See [AUTHORS](AUTHORS.md) and [COPYRIG
 
 CMaNGOS is a free project with the following goal:
 
-  **Doing WoW-Emulation Right!**
+  **Doing Emulation Right!**
 
 This means, we want to focus on:
 
-* WoW-Emulation
-    This project is about developing a server software that is able to
-    emulate a well known MMORPG service.
-
 * Doing
-  * This project is focused on developing content!
+  * This project is focused on developing software!
   * Also there are many other aspects that need to be done and are
     considered equally important.
   * Anyone who wants to do stuff is very welcome to do so!
+
+* Emulation
+  * This project is about developing a server software that is able to
+    emulate a well known MMORPG service.
 
 * Right
   * Our goal must always be to provide the best code that we can.
@@ -64,7 +64,6 @@ To be able to accomplish these goals, we support and promote:
   * [GitHub repositories](https://github.com/cmangos/)
   * [Issue tracker](https://github.com/cmangos/issues/issues)
   * [Pull Requests](https://github.com/cmangos/mangos-tbc/pulls)
-  * [Current build status on Travis CI](https://travis-ci.org/cmangos/mangos-tbc/)
   * [Wiki](https://github.com/cmangos/issues/wiki) with additional information on installation
   * [Contributing Guidelines](CONTRIBUTING.md)
   * Documentation can be found in the doc/ subdirectory and on the GitHub wiki
@@ -90,8 +89,18 @@ To be able to accomplish these goals, we support and promote:
 
 ### Exceptions to GPL
 
-  World of Warcraft content and materials are trademarks and copyrights of Blizzard or its licensors. All rights reserved.
-  CMaNGOS project is not affiliated with Blizzard or its licensors.
+  World of Warcraft® ©2004 Blizzard Entertainment, Inc. All rights reserved.
+  World of Warcraft® content and materials mentioned or referenced are copyrighted by
+  Blizzard Entertainment, Inc. or its licensors.
+  World of Warcraft, WoW, Warcraft, The Frozen Throne, The Burning Crusade, Wrath of the Lich King,
+  Cataclysm, Mists of Pandaria, Ashbringer, Dark Portal, Darkmoon Faire, Frostmourne, Onyxia's Lair,
+  Diablo, Hearthstone, Heroes of Azeroth, Reaper of Souls, Starcraft, Battle Net, Blizzcon, Glider,
+  Blizzard and Blizzard Entertainment are trademarks or registered trademarks of
+  Blizzard Entertainment, Inc. in the U.S. and/or other countries.
+
+  Any World of Warcraft® content and materials mentioned or referenced are copyrighted by
+  Blizzard Entertainment, Inc. or its licensors.
+  CMaNGOS project is not affiliated with Blizzard Entertainment, Inc. or its licensors.
 
   Some third-party libraries CMaNGOS uses have other licenses, that must be
   upheld.  These libraries are located within the dep/ directory

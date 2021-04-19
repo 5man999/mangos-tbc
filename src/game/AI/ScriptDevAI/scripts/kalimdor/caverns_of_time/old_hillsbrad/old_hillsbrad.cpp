@@ -607,14 +607,14 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI, private DialogueHelper
             case NPC_SKARLOC:
                 switch (uiPointId)
                 {
-                    case 2:
+                    case 1:
                         // summon mount
                         pSummoned->Unmount();
                         m_creature->SummonCreature(NPC_SKARLOC_MOUNT, 2047.775f, 253.4088f, 62.91183f, 5.37f, TEMPSPAWN_DEAD_DESPAWN, 0);
                         pSummoned->SetWalk(true);
                         pSummoned->GetMotionMaster()->MovePoint(2, 2059.899f, 234.2593f, 64.10809f);
                         break;
-                    case 3:
+                    case 2:
                         // taunt Thrall
                         DoScriptText(SAY_SKARLOC_ENTER, pSummoned);
                         SetEscortPaused(false);
@@ -879,7 +879,7 @@ struct npc_thrall_old_hillsbradAI : public npc_escortAI, private DialogueHelper
                 break;
             // *** Escort event - Part IV - Epoch ***
             case 114:
-                m_creature->SummonCreature(NPC_EPOCH, 2639.92f, 700.2587f, 65.13583f, 4.74f, TEMPSPAWN_DEAD_DESPAWN, 0);
+                m_creature->SummonCreature(NPC_EPOCH, 2639.9202f, 700.25867f, 65.13583f, 4.74729f, TEMPSPAWN_DEAD_DESPAWN, 0);
                 StartNextDialogueText(NPC_EPOCH);
                 SetEscortPaused(true);
                 break;

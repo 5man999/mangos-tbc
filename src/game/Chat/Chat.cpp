@@ -275,7 +275,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "fly",            SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGMFlyCommand,               "", nullptr },
         { "ingame",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleGMListIngameCommand,        "", nullptr },
         { "list",           SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleGMListFullCommand,          "", nullptr },
-        { "mountup",        SEC_MODERATOR,      false, &ChatHandler::HandleGMMountUpCommand,           "", nullptr },
+        { "mountup",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGMMountUpCommand,           "", nullptr },
         { "visible",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGMVisibleCommand,           "", nullptr },
         { "setview",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleSetViewCommand,             "", nullptr },
         { "",               SEC_ADMINISTRATOR,  false, &ChatHandler::HandleGMCommand,                  "", nullptr },
@@ -696,6 +696,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "flushpoints",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaFlushPointsCommand,      "", nullptr },
         { "sendRewards",        SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaSeasonRewardsCommand,    "", nullptr },
         { "resetData",          SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaDataReset,               "", nullptr },
+        { "teampoints",         SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleArenaTeamPointSet,            "", nullptr },
         { nullptr,              0,                  false, nullptr,                                          "", nullptr }
     };
 
@@ -802,9 +803,18 @@ ChatCommand* ChatHandler::getCommandTable()
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
 
+    static ChatCommand sunsReachReclamationTable[] =
+    {
+        { "phase",          SEC_ADMINISTRATOR,  false, &ChatHandler::HandleSunsReachReclamationPhaseCommand, "", nullptr },
+        { "subphase",       SEC_ADMINISTRATOR,  false, &ChatHandler::HandleSunsReachReclamationSubPhaseCommand, "", nullptr },
+        { "counter",        SEC_ADMINISTRATOR,  false, &ChatHandler::HandleSunsReachReclamationCounterCommand, "", nullptr },
+        { nullptr,          0,                  false, nullptr,                                        "", nullptr }
+    };
+
     static ChatCommand worldStateTable[] =
     {
         { "wareffort",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleWarEffortCommand,           "", nullptr },
+        { "sunsreach",      SEC_ADMINISTRATOR,  false, nullptr,                                        "", sunsReachReclamationTable },
         { "expansion",      SEC_ADMINISTRATOR,  false, &ChatHandler::HandleExpansionRelease,           "", nullptr },
         { nullptr,          0,                  false, nullptr,                                        "", nullptr }
     };
@@ -857,7 +867,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "channel",        SEC_MODERATOR,      false, nullptr,                                        "", channelCommandTable  },
         { "debug",          SEC_MODERATOR,      true,  nullptr,                                        "", debugCommandTable    },
         { "event",          SEC_GAMEMASTER,     false, nullptr,                                        "", eventCommandTable    },
-        { "gm",             SEC_PLAYER,         true,  nullptr,                                        "", gmCommandTable       },
+        { "gm",             SEC_ADMINISTRATOR,  true,  nullptr,                                        "", gmCommandTable       },
         { "honor",          SEC_GAMEMASTER,     false, nullptr,                                        "", honorCommandTable    },
         { "go",             SEC_MODERATOR,      false, nullptr,                                        "", goCommandTable       },
         { "gobject",        SEC_GAMEMASTER,     false, nullptr,                                        "", gobjectCommandTable  },
@@ -933,7 +943,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "loadscripts",    SEC_ADMINISTRATOR,  true,  &ChatHandler::HandleLoadScriptsCommand,         "", nullptr },
         { "mute",           SEC_MODERATOR,      true,  &ChatHandler::HandleMuteCommand,                "", nullptr },
         { "unmute",         SEC_MODERATOR,      true,  &ChatHandler::HandleUnmuteCommand,              "", nullptr },
-        { "movement",       SEC_PLAYER,         true,  nullptr,                                        "", movementCommandTable },
+        { "movement",       SEC_GAMEMASTER,     true,  nullptr,                                        "", movementCommandTable },
         { "damage",         SEC_ADMINISTRATOR,  false, &ChatHandler::HandleDamageCommand,              "", nullptr },
         { "combat",         SEC_PLAYER,         false, nullptr,                                        "", combatCommandTable },
         { "arena",          SEC_ADMINISTRATOR,  false, nullptr,                                        "", arenaCommandTable },

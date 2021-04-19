@@ -471,7 +471,7 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
 
 bool IsExplicitPositiveTarget(uint32 targetA)
 {
-    // positive targets that in target selection code expect target in m_targers, so not that auto-select target by spell data by m_caster and etc
+    // positive targets that in target selection code expect target in m_targets, so not that auto-select target by spell data by m_caster and etc
     switch (targetA)
     {
         case TARGET_UNIT_FRIEND:
@@ -488,7 +488,7 @@ bool IsExplicitPositiveTarget(uint32 targetA)
 
 bool IsExplicitNegativeTarget(uint32 targetA)
 {
-    // non-positive targets that in target selection code expect target in m_targers, so not that auto-select target by spell data by m_caster and etc
+    // non-positive targets that in target selection code expect target in m_targets, so not that auto-select target by spell data by m_caster and etc
     switch (targetA)
     {
         case TARGET_UNIT_ENEMY:
@@ -746,7 +746,7 @@ struct DoSpellProcEvent
         if (spe.procFlags == 0)
         {
             if (spell->procFlags == 0)
-                sLog.outErrorDb("Spell %u listed in `spell_proc_event` probally not triggered spell (no proc flags)", spell->Id);
+                sLog.outErrorDb("Spell %u listed in `spell_proc_event` probably not triggered spell (no proc flags)", spell->Id);
         }
         else
         {
@@ -760,7 +760,7 @@ struct DoSpellProcEvent
         {
             /* enable for re-check cases, 0 chance ok for some cases because in some cases it set by another spell/talent spellmod)
             if (spell->procChance==0 && !spe.ppmRate)
-                sLog.outErrorDb("Spell %u listed in `spell_proc_event` probally not triggered spell (no chance or ppm)", spell->Id);
+                sLog.outErrorDb("Spell %u listed in `spell_proc_event` probably not triggered spell (no chance or ppm)", spell->Id);
             */
         }
         else
@@ -1248,7 +1248,7 @@ struct DoSpellThreat
         threatMap[spell->Id] = ste;
 
         // flat threat bonus and attack power bonus currently only work properly when all
-        // effects have same targets, otherwise, we'd need to seperate it by effect index
+        // effects have same targets, otherwise, we'd need to separate it by effect index
         if (ste.threat || ste.ap_bonus != 0.f)
         {
             const uint32* targetA = spell->EffectImplicitTargetA;
@@ -2079,6 +2079,18 @@ void SpellMgr::LoadSpellScriptTarget()
                 }
                 break;
             }
+            case SPELL_TARGET_TYPE_GAMEOBJECT_GUID:
+            {
+                if (!itr->targetEntry)
+                    break;
+
+                if (!sObjectMgr.GetGOData(itr->targetEntry))
+                {
+                    sLog.outErrorDb("Table `spell_script_target`: gameobject entry %u does not exist.", itr->targetEntry);
+                    sSpellScriptTargetStorage.EraseEntry(itr->spellId);
+                }
+                break;
+            }
             case SPELL_TARGET_TYPE_CREATURE_GUID:
             {
                 if (!sObjectMgr.GetCreatureData(itr->targetEntry))
@@ -2513,7 +2525,7 @@ SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const* spell
         return SPELL_FAILED_REQUIRES_AREA;
 
     // continent limitation (virtual continent), ignore for GM
-    if (spellInfo->HasAttribute(SPELL_ATTR_EX4_CAST_ONLY_IN_OUTLAND) && !(player && player->isGameMaster()))
+    if (spellInfo->HasAttribute(SPELL_ATTR_EX4_CAST_ONLY_IN_OUTLAND) && !(player && player->IsGameMaster()))
     {
         uint32 v_map = GetVirtualMapForMapAndZone(map_id, zone_id);
         MapEntry const* mapEntry = sMapStore.LookupEntry(v_map);

@@ -36,7 +36,10 @@
 #include "Entities/Pet.h"
 #include "Server/DBCStores.h"
 #include "Log.h"
-#include "Metric/Metric.h"
+
+#ifdef BUILD_METRICS
+ #include "Metric/Metric.h"
+#endif
 
 #include <cassert>
 
@@ -47,6 +50,7 @@ inline bool isStatic(MovementGenerator* mv)
 
 void MotionMaster::Initialize()
 {
+#ifdef BUILD_METRICS
     metric::duration<std::chrono::microseconds> meas("motionmaster.initialize", {
         { "entry", std::to_string(m_owner->GetEntry()) },
         { "guid", std::to_string(m_owner->GetGUIDLow()) },
@@ -54,7 +58,7 @@ void MotionMaster::Initialize()
         { "map_id", std::to_string(m_owner->GetMapId()) },
         { "instance_id", std::to_string(m_owner->GetInstanceId()) }
     }, 1000);
-
+#endif
     // stop current move
     m_owner->StopMoving();
 
@@ -64,10 +68,10 @@ void MotionMaster::Initialize()
     // set new default movement generator
     if (m_owner->GetTypeId() == TYPEID_UNIT && !m_owner->hasUnitState(UNIT_STAT_POSSESSED))
     {
+        m_currentPathId = m_defaultPathId;
         MovementGenerator* movement = FactorySelector::selectMovementGenerator((Creature*)m_owner);
         push(movement == nullptr ? &si_idleMovement : movement);
         top()->Initialize(*m_owner);
-        m_currentPathId = m_defaultPathId;
         if (top()->GetMovementGeneratorType() == WAYPOINT_MOTION_TYPE)
             (static_cast<WaypointMovementGenerator<Creature>*>(top()))->InitializeWaypointPath(*((Creature*)(m_owner)), m_currentPathId, PATH_NO_PATH, 0, 0);
     }
@@ -91,7 +95,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
 {
     if (m_owner->hasUnitState(UNIT_STAT_CAN_NOT_MOVE))
         return;
-
+#ifdef BUILD_METRICS
     metric::duration<std::chrono::microseconds> meas("motionmaster.updatemotion", {
         { "entry", std::to_string(m_owner->GetEntry()) },
         { "guid", std::to_string(m_owner->GetGUIDLow()) },
@@ -99,6 +103,7 @@ void MotionMaster::UpdateMotion(uint32 diff)
         { "map_id", std::to_string(m_owner->GetMapId()) },
         { "instance_id", std::to_string(m_owner->GetInstanceId()) }
     }, 1000);
+#endif
 
     MANGOS_ASSERT(!empty());
     m_cleanFlag |= MMCF_UPDATE;
@@ -365,19 +370,14 @@ void MotionMaster::MoveStay(float x, float y, float z, float o, bool asMain)
     Mutate(new StayMovementGenerator(x, y, z, o));
 }
 
-void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generatePath/* = true*/, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/)
+void MotionMaster::MovePoint(uint32 id, Position const& position, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/, float speed/* = 0.f*/, bool generatePath/* = true*/)
 {
-    return MovePoint(id, x, y, z, 0, generatePath, forcedMovement);
+    Mutate(new PointMovementGenerator(id, position.x, position.y, position.z, position.o, generatePath, forcedMovement, speed));
 }
 
-void MotionMaster::MovePoint(uint32 id, float x, float y, float z, float o, bool generatePath/* = true*/, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/)
+void MotionMaster::MovePoint(uint32 id, float x, float y, float z, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/, bool generatePath/* = true*/)
 {
-    if (o != 0.f)
-        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point (Id: %u X: %f Y: %f Z: %f O: %f)", m_owner->GetGuidStr().c_str(), id, x, y, z, o);
-    else
-        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s targeted point (Id: %u X: %f Y: %f Z: %f)", m_owner->GetGuidStr().c_str(), id, x, y, z);
-
-    Mutate(new PointMovementGenerator(id, x, y, z, o, generatePath, forcedMovement));
+    return MovePoint(id, Position(x, y, z, 0.f), forcedMovement, 0.f, generatePath);
 }
 
 void MotionMaster::MovePointTOL(uint32 id, float x, float y, float z, bool takeOff, ForcedMovement forcedMovement/* = FORCED_MOVEMENT_NONE*/)
@@ -407,34 +407,10 @@ void MotionMaster::MovePath(std::vector<G3D::Vector3>& path, float o, ForcedMove
     Mutate(new FixedPathMovementGenerator(path, o, forcedMovement, flying));
 }
 
-void MotionMaster::MovePath(WaypointPath& path, ForcedMovement forcedMovement, bool flying)
+void MotionMaster::MovePath(int32 pathId, WaypointPathOrigin wpOrigin /*= PATH_NO_PATH*/, ForcedMovement forcedMovement, bool flying, float speed, bool cyclic)
 {
-    if (path.empty())
-        return;
-
-    if (path.begin()->first != 0)
-    {
-        sLog.outError("%s attempts to follow a pre-calculated path with unusual indexing: first waypoint at %i", m_owner->GetGuidStr().c_str(), path.begin()->first);
-        return;
-    }
-
-    const auto& finish = path.rbegin();
-    auto& dest = finish->second;
-
-    for (auto itr = path.begin(); itr != path.end(); ++itr)
-    {
-        if ((*itr).first > (*finish).first)
-            dest = ((*itr).second);
-    }
-
-    const float x = dest.x, y = dest.y, z = dest.z, o = dest.orientation;
-
-    if (o != 0.f)
-        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s follows a pre-calculated path using waypoints to X: %f Y: %f Z: %f O: %f", m_owner->GetGuidStr().c_str(), x, y, z, o);
-    else
-        DEBUG_FILTER_LOG(LOG_FILTER_AI_AND_MOVEGENSS, "%s follows a pre-calculated path using waypoints to X: %f Y: %f Z: %f", m_owner->GetGuidStr().c_str(), x, y, z);
-
-    Mutate(new FixedPathMovementGenerator(path, forcedMovement, flying));
+    m_currentPathId = pathId;
+    Mutate(new FixedPathMovementGenerator(*m_owner, pathId, wpOrigin, forcedMovement, flying, speed, 0, cyclic));
 }
 
 void MotionMaster::MoveRetreat(float x, float y, float z, float o, uint32 delay)
@@ -524,20 +500,20 @@ void MotionMaster::MoveCharge(Unit& target, float speed, uint32 id/* = EVENT_CHA
     if (m_owner->hasUnitState(UNIT_STAT_NO_FREE_MOVE))
         return;
 
-    WorldLocation pos;
+    Position pos;
     target.GetFirstCollisionPosition(pos, target.GetCombatReach(), target.GetAngle(m_owner));
 
-    pos.coord_z += 1; // blizzlike
+    pos.z += 1; // blizzlike
     Movement::MoveSplineInit init(*m_owner);
     init.SetWalk(false);
     init.SetVelocity(speed);
     init.SetFacing(&target);
-    init.MoveTo(pos.coord_x, pos.coord_y, pos.coord_z, true);
+    init.MoveTo(pos.x, pos.y, pos.z, true);
 
     Mutate(new EffectMovementGenerator(init, id, false));
 }
 
-void MotionMaster::MoveFall()
+bool MotionMaster::MoveFall()
 {
     const float x = m_owner->GetPositionX(), y = m_owner->GetPositionY(), z = m_owner->GetPositionZ();
 
@@ -547,17 +523,18 @@ void MotionMaster::MoveFall()
     if (tz <= INVALID_HEIGHT)
     {
         DEBUG_LOG("MotionMaster::MoveFall: unable retrive a proper height at map %u (x: %f, y: %f, z: %f).", m_owner->GetMap()->GetId(), x, y, z);
-        return;
+        return false;
     }
 
     // Abort too if the ground is very near
-    if (fabs(z - tz) < 0.1f)
-        return;
+    if (fabs(z - tz) < MOVE_FALL_MIN_FALL_DISTANCE)
+        return false;
 
     Movement::MoveSplineInit init(*m_owner);
     init.MoveTo(x, y, tz);
     init.SetFall();
     Mutate(new EffectMovementGenerator(init, EVENT_JUMP));
+    return true;
 }
 
 void MotionMaster::Mutate(MovementGenerator* m)
@@ -605,6 +582,12 @@ void MotionMaster::PauseWaypoints(uint32 time)
         gen->AddToWaypointPauseTime(time, true);
         return;
     }
+    else if (GetCurrentMovementGeneratorType() == PATH_MOTION_TYPE)
+    {
+        auto gen = (FixedPathMovementGenerator*)top();
+        gen->AddToPathPauseTime(time, true);
+        return;
+    }
 }
 
 void MotionMaster::UnpauseWaypoints()
@@ -617,6 +600,12 @@ void MotionMaster::UnpauseWaypoints()
     {
         auto gen = (WaypointMovementGenerator<Creature>*)top();
         gen->AddToWaypointPauseTime(0, true);
+        return;
+    }
+    else if (GetCurrentMovementGeneratorType() == PATH_MOTION_TYPE)
+    {
+        auto gen = (FixedPathMovementGenerator*)top();
+        gen->AddToPathPauseTime(0, true);
         return;
     }
 }

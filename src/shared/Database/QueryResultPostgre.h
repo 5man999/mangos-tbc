@@ -68,7 +68,7 @@
 #define BITOID 1560
 #define VARBITOID 1562
 #define NUMERICOID 1700
-#include <libpq-fe.h>
+#include <postgresql/libpq-fe.h>
 #endif
 
 class QueryResultPostgre : public QueryResult

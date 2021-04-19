@@ -65,14 +65,17 @@
 #include "Weather/Weather.h"
 #include "World/WorldState.h"
 #include "Cinematics/CinematicMgr.h"
+#include "Maps/TransportMgr.h"
 
 #include "Custom/Custom.h"
 
 #ifdef BUILD_AHBOT
-#include "AuctionHouseBot/AuctionHouseBot.h"
+ #include "AuctionHouseBot/AuctionHouseBot.h"
 #endif
 
-#include "Metric/Metric.h"
+#ifdef BUILD_METRICS
+ #include "Metric/Metric.h"
+#endif
 
 #include <algorithm>
 #include <mutex>
@@ -672,7 +675,6 @@ void World::LoadConfigSettings(bool reload)
     setConfigMinMax(CONFIG_FLOAT_GHOST_RUN_SPEED_WORLD,   "Death.Ghost.RunSpeed.World", 1.0f, 0.1f, 10.0f);
     setConfigMinMax(CONFIG_FLOAT_GHOST_RUN_SPEED_BG,      "Death.Ghost.RunSpeed.Battleground", 1.0f, 0.1f, 10.0f);
 
-    setConfig(CONFIG_FLOAT_THREAT_RADIUS, "ThreatRadius", 100.0f);
     setConfigMin(CONFIG_UINT32_CREATURE_RESPAWN_AGGRO_DELAY, "CreatureRespawnAggroDelay", 5000, 0);
     setConfig(CONFIG_UINT32_CREATURE_PICKPOCKET_RESTOCK_DELAY, "CreaturePickpocketRestockDelay", 600);
 
@@ -895,7 +897,7 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Loading world safe locs ...");
     sObjectMgr.LoadWorldSafeLocs();
-    
+
     ///- Load the DBC files
     sLog.outString("Initialize DBC data stores...");
     LoadDBCStores(m_dataPath);
@@ -939,11 +941,15 @@ void World::SetInitialWorldSettings()
     sObjectMgr.LoadPageTexts();
 
     sLog.outString("Loading Game Object Templates...");     // must be after LoadPageTexts
-    sObjectMgr.LoadGameobjectInfo();
+    std::vector<uint32> transportDisplayIds = sObjectMgr.LoadGameobjectInfo();
+    MMAP::MMapFactory::createOrGetMMapManager()->loadAllGameObjectModels(transportDisplayIds);
 
     sLog.outString("Loading GameObject models...");
     LoadGameObjectModelList();
     sLog.outString();
+
+    // loads GO data
+    sTransportMgr.LoadTransportAnimationAndRotation();
 
     sLog.outString("Loading Spell Chain Data...");
     sSpellMgr.LoadSpellChains();
@@ -1026,11 +1032,17 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading Creature Conditional Spawn Data...");  // must be after LoadCreatureTemplates and before LoadCreatures
     sObjectMgr.LoadCreatureConditionalSpawn();
 
+    sLog.outString("Loading Creature Spawn Template Data..."); // must be before LoadCreatures
+    sObjectMgr.LoadCreatureSpawnDataTemplates();
+
     sLog.outString("Loading Creature Spawn Entry Data..."); // must be before LoadCreatures
     sObjectMgr.LoadCreatureSpawnEntry();
 
     sLog.outString("Loading Creature Data...");
     sObjectMgr.LoadCreatures();
+
+    sLog.outString("Loading Gameobject Data...");
+    sObjectMgr.LoadGameObjects();
 
     sLog.outString("Loading SpellsScriptTarget...");
     sSpellMgr.LoadSpellScriptTarget();                      // must be after LoadCreatureTemplates, LoadCreatures and LoadGameobjectInfo
@@ -1042,9 +1054,6 @@ void World::SetInitialWorldSettings()
     sObjectMgr.LoadCreatureAddons();                        // must be after LoadCreatureTemplates() and LoadCreatures()
     sLog.outString(">>> Creature Addon Data loaded");
     sLog.outString();
-
-    sLog.outString("Loading Gameobject Data...");
-    sObjectMgr.LoadGameObjects();
 
     sLog.outString("Loading CreatureLinking Data...");      // must be after Creatures
     sCreatureLinkingMgr.LoadFromDB();
@@ -1073,6 +1082,10 @@ void World::SetInitialWorldSettings()
 
     sLog.outString("Loading Conditions...");                // Load Conditions
     sObjectMgr.LoadConditions();
+
+    // Not sure if this can be moved up in the sequence (with static data loading) as it uses MapManager
+    sLog.outString("Loading Transports...");
+    sMapMgr.LoadTransports();
 
     sLog.outString("Creating map persistent states for non-instanceable maps...");     // must be after PackInstances(), LoadCreatures(), sPoolMgr.LoadFromDB(), sGameEventMgr.LoadFromDB();
     sMapPersistentStateMgr.InitWorldMaps();
@@ -1333,10 +1346,6 @@ void World::SetInitialWorldSettings()
     sBattleGroundMgr.CreateInitialBattleGrounds();
     sBattleGroundMgr.InitAutomaticArenaPointDistribution();
 
-    // Not sure if this can be moved up in the sequence (with static data loading) as it uses MapManager
-    sLog.outString("Loading Transports...");
-    sMapMgr.LoadTransports();
-
     sLog.outString("Deleting expired bans...");
     LoginDatabase.Execute("DELETE FROM ip_banned WHERE expires_at<=UNIX_TIMESTAMP() AND expires_at<>banned_at");
     sLog.outString();
@@ -1379,8 +1388,11 @@ void World::SetInitialWorldSettings()
     sWorldState.Load();
     sLog.outString();
 
+#ifdef BUILD_METRICS
     // update metrics output every second
     m_timers[WUPDATE_METRICS].SetInterval(1 * IN_MILLISECONDS);
+#endif // BUILD_METRICS
+
 
     sLog.outString("Loading custom database related stuff");
     sCustom.Load();
@@ -1569,12 +1581,13 @@ void World::Update(uint32 diff)
         m_timers[WUPDATE_EVENTS].Reset();
     }
 
+#ifdef BUILD_METRICS
     if (m_timers[WUPDATE_METRICS].Passed())
     {
         m_timers[WUPDATE_METRICS].Reset();
-
         GeneratePacketMetrics();
     }
+#endif
 
     /// </ul>
     ///- Move all creatures with "delayed move" and remove and delete all objects with "delayed remove"
@@ -1588,7 +1601,7 @@ void World::Update(uint32 diff)
 
     // cleanup unused GridMap objects as well as VMaps
     sTerrainMgr.Update(diff);
-
+#ifdef BUILD_METRICS
     auto updateEndTime = std::chrono::time_point_cast<std::chrono::milliseconds>(Clock::now());
     long long total = (updateEndTime - m_currentTime).count();
     long long presession = (preSessionTime - m_currentTime).count();
@@ -1604,6 +1617,7 @@ void World::Update(uint32 diff)
     meas.add_field("map", std::to_string(map));
     meas.add_field("singletons", std::to_string(singletons));
     meas.add_field("cleanup", std::to_string(cleanup));
+#endif
 }
 
 namespace MaNGOS
@@ -2582,6 +2596,7 @@ void World::IncrementOpcodeCounter(uint32 opcodeId)
     ++m_opcodeCounters[opcodeId];
 }
 
+#ifdef BUILD_METRICS
 void World::GeneratePacketMetrics()
 {
     for (uint32 i = 0; i < NUM_MSG_TYPES; ++i)
@@ -2626,3 +2641,4 @@ void World::GeneratePacketMetrics()
     meas_players.add_field("warlock", std::to_string(GetOnlineClassPlayers(CLASS_WARLOCK)));
     meas_players.add_field("druid", std::to_string(GetOnlineClassPlayers(CLASS_DRUID)));
 }
+#endif
