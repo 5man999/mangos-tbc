@@ -691,21 +691,19 @@ float FollowMovementGenerator::GetSpeed(Unit& owner) const
     if (owner.IsInCombat() || !i_target.isValid())
         return speed;
 
-    // Use default speed when a mix of PC and NPC units involved (escorting?)
-    if (owner.HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) != i_target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
-        return speed;
-
     // Followers sync with master's speed when not in combat
-    speed = i_target->GetSpeedInMotion();
+    // Use default speed when a mix of PC and NPC units involved (escorting?)
+    if (owner.HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) == i_target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+        speed = i_target->GetSpeedInMotion();
 
     // Catchup boost is not allowed, stop here:
     if (!IsBoostAllowed(owner))
         return speed;
 
     // Catch-up speed boost if allowed:
-    // * When following client-controlled units: boost up to max hardcoded speed
+    // * When following client-controlled units or overriden: boost up to max hardcoded speed
     // * When following server-controlled units: try to boost up to own run speed
-    if (i_target->IsClientControlled())
+    if (i_target->IsClientControlled() || m_boost)
     {
         const float bonus = (i_target->GetDistance(owner.GetPositionX(), owner.GetPositionY(), owner.GetPositionZ(), DIST_CALC_NONE) / speed);
         return std::max(owner.GetSpeed(MOVE_WALK), std::min((speed + bonus), 40.0f));
@@ -719,8 +717,8 @@ bool FollowMovementGenerator::IsBoostAllowed(Unit& owner) const
     if (owner.IsInCombat() || !i_target.isValid())
         return false;
 
-    // Do not allow boosting outside of pet/master relationship:
-    if (owner.GetMasterGuid() != i_target->GetObjectGuid())
+    // Do not allow boosting outside of pet/master relationship by default, unless overriden:
+    if (!m_boost && owner.GetMasterGuid() != i_target->GetObjectGuid())
         return false;
 
     // Boost speed only if follower is too far behind
@@ -746,13 +744,18 @@ bool FollowMovementGenerator::IsUnstuckAllowed(Unit& owner) const
     if (owner.IsInCombat() || !i_target.isValid() || i_target->IsInCombat())
         return false;
 
+    // Do not try to unstuck when a mix of PC and NPC units involved (escorting?)
+    if (owner.HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) != i_target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+        return false;
+
     // Do not try to unstuck while target has not landed or stabilized on terrain in some way
     if (i_target->m_movementInfo->HasMovementFlag(MovementFlags(MOVEFLAG_FALLING | MOVEFLAG_FALLINGFAR | MOVEFLAG_FLYING)))
         return false;
 
     // Do not try to unstuck while indoors (usually in dungeons, but also buildings)
-    if (!i_target->GetTerrain()->IsOutdoors(owner.GetPositionX(), owner.GetPositionY(), owner.GetPositionZ()))
-        return false;
+    if (!i_target->GetTerrain()->IsOutdoors(i_target->GetPositionX(), i_target->GetPositionY(), i_target->GetPositionZ()))
+        if (!owner.GetTerrain()->IsOutdoors(owner.GetPositionX(), owner.GetPositionY(), owner.GetPositionZ()))
+            return false;
 
     // Do not try to unstuck if boost is not allowed either:
     return IsBoostAllowed(owner);
@@ -806,19 +809,7 @@ bool FollowMovementGenerator::GetResetPosition(Unit& owner, float& x, float& y, 
 bool FollowMovementGenerator::Move(Unit& owner, float x, float y, float z)
 {
     if (!owner.movespline->Finalized())
-    {
-        auto loc = owner.movespline->ComputePosition();
-        if (GenericTransport* transport = owner.GetTransport())
-            transport->CalculatePassengerPosition(loc.x, loc.y, loc.z, &loc.orientation);
-
-        if (owner.movespline->isFacing())
-        {
-            float angle = atan2((loc.y - owner.GetPositionY()), (loc.x - owner.GetPositionX()));
-            loc.orientation = (angle >= 0 ? angle : ((2 * M_PI_F) + angle));
-        }
-
-        owner.Relocate(loc.x, loc.y, loc.z, loc.orientation);
-    }
+        owner.UpdateSplinePosition(true);
 
     if (!i_path)
         i_path = new PathFinder(&owner);
@@ -842,10 +833,21 @@ bool FollowMovementGenerator::Move(Unit& owner, float x, float y, float z)
         // Follower needs to be able to see predicted location to prevent issues and exploits
         const Map* map = owner.GetMap();
         const float height = owner.GetCollisionHeight();
+        const GenericTransport* transport = owner.GetTransport();
 
         for (size_t i = 1; i < path.size(); ++i)
         {
-            if (map->IsInLineOfSight(path[i - 1].x, path[i - 1].y, (path[i - 1].z + height), path[i].x, path[i].y, (path[i].z + height), true))
+            float lx = path[i - 1].x, ly = path[i - 1].y, lz = path[i - 1].z;
+            float nx = path[i].x, ny = path[i].y, nz = path[i].z;
+
+            // Convert local transport spline to global spline for visibility check
+            if (transport)
+            {
+                transport->CalculatePassengerPosition(lx, ly, lz);
+                transport->CalculatePassengerPosition(nx, ny, nz);
+            }
+
+            if (map->IsInLineOfSight(lx, ly, (lz + height), nx, ny, (nz + height), true))
                 continue;
 
             if (i != 1)
@@ -902,11 +904,10 @@ bool FollowMovementGenerator::_getLocation(Unit& owner, float& x, float& y, floa
 
     owner.GetPosition(x, y, z);
 
-    const float radius = owner.GetObjectBoundingRadius();
-    const float range = GetDynamicTargetDistance(owner, false);
-    const float angle = (i_target->GetOrientation() + GetAngle());
+    float tx, ty, tz;
+    i_target->GetPosition(tx, ty, tz);
 
-    float tx = i_target->GetPositionX(), ty = i_target->GetPositionY(), tz = i_target->GetPositionZ();
+    float to = i_target->GetOrientation();
 
     // Server-controlled moving unit: use destination
     if (!i_target->movespline->Finalized() && movingNow)
@@ -915,17 +916,16 @@ bool FollowMovementGenerator::_getLocation(Unit& owner, float& x, float& y, floa
         tx = dest.x;
         ty = dest.y;
         tz = dest.z;
-        if (GenericTransport* transport = owner.GetTransport())
+
+        if (GenericTransport* transport = i_target->GetTransport())
             transport->CalculatePassengerPosition(tx, ty, tz);
     }
     // Client-controlled moving unit: use simple prediction
     else if (movingNow)
     {
         const float speed = i_target->GetSpeedInMotion();
-        float to = i_target->m_movementInfo->GetOrientationInMotion(i_target->GetOrientation());
-
-        float dx = (speed * cos(to)), dy = (speed * sin(to));
-
+        const float o = i_target->m_movementInfo->GetOrientationInMotion(to);
+        float dx = (speed * cos(o)), dy = (speed * sin(o));
         float nx = (tx + dx), ny = (ty + dy), nz = tz;
         i_target->UpdateAllowedPositionZ(nx, ny, nz);
 
@@ -940,6 +940,10 @@ bool FollowMovementGenerator::_getLocation(Unit& owner, float& x, float& y, floa
             tz = nz;
         }
     }
+
+    const float radius = owner.GetObjectBoundingRadius();
+    const float range = GetDynamicTargetDistance(owner, false);
+    const float angle = (to + GetAngle());
 
     i_target->GetNearPointAt(tx, ty, tz, &owner, x, y, z, radius, range, angle);
     return true;
@@ -975,21 +979,17 @@ void FollowMovementGenerator::_setLocation(Unit& owner, bool movingNow)
     m_targetFaced = false;
 }
 
-uint32 FollowMovementGenerator::_getPollRateMultiplier(Unit& owner, bool targetMovingNow, bool/* targetMovedBefore = true*/) const
+uint32 FollowMovementGenerator::_getPollRateMultiplier(Unit& owner, bool/* targetMovingNow*/, bool/* targetMovedBefore = true*/) const
 {
     uint32 multiplier = (owner.HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) ? 1 : 2);
-
-    if (!targetMovingNow)
-        multiplier *= 2;
-
     return multiplier;
 }
 
 uint32 FollowMovementGenerator::_getPollRate(Unit& owner, bool movingNow, bool movingBefore/* = true*/) const
 {
     const uint32 multiplier = _getPollRateMultiplier(owner, movingNow, movingBefore);
-    const uint32 rate = (_getPollRateBase() * uint32(owner.GetSpeedRateInMotion()));    // Default: 250ms, pushed up for extreme speeds
-    const uint32 max = (_getPollRateMax() * uint32(owner.GetSpeedRateInMotion()));      // Default: 1000ms, pushed up for extreme speeds
+    const uint32 rate = (_getPollRateBase() * uint32(owner.GetSpeedRateInMotion()));
+    const uint32 max = (_getPollRateMax() * uint32(owner.GetSpeedRateInMotion()));
     return std::min(std::max(rate, (rate * multiplier)), max);
 }
 
@@ -1023,6 +1023,8 @@ void FollowMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& 
     static const MovementFlags detected = MovementFlags(MOVEFLAG_MASK_MOVING_FORWARD | MOVEFLAG_BACKWARD | MOVEFLAG_PITCH_UP | MOVEFLAG_PITCH_DOWN);
     static const MovementFlags ignored = MovementFlags(MOVEFLAG_FALLING | MOVEFLAG_FALLINGFAR);
 
+    const bool followerMoving = owner.m_movementInfo.HasMovementFlag(detected);
+
     // Detect target movement and relocation (ignore jumping in place and long falls)
     const bool targetMovingLast = m_targetMoving;
     const bool targetIgnore = i_target->m_movementInfo->HasMovementFlag(ignored);
@@ -1032,11 +1034,11 @@ void FollowMovementGenerator::HandleTargetedMovement(Unit& owner, const uint32& 
     bool targetSpeedChanged = (i_speedChanged && m_targetMoving && targetMovingLast);
     i_speedChanged = false;
 
-    if (m_targetMoving && !targetMovingLast)        // Movement just started: force update
-        targetRelocation = true;
-    else if (!m_targetMoving && targetMovingLast)   // Movement just ended: delay update further
+    if (m_targetMoving && !targetMovingLast)                        // Movement just started: force update
+        targetRelocation = !followerMoving;
+    else if (!m_targetMoving && targetMovingLast && followerMoving) // Movement just ended: delay update further
         i_recheckDistance.Reset(_getPollRate(owner, m_targetMoving, targetMovingLast));
-    else                                            // Periodic dist poll: fast when moving, slow when stationary
+    else                                                            // Periodic dist poll: fast when moving, slow when stationary
     {
         i_recheckDistance.Update(time_diff);
 
