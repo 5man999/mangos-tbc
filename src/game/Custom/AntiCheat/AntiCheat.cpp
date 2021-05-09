@@ -58,7 +58,7 @@ void AntiCheat::HandleKnockBack(float /*angle*/, float horizontalSpeed, float ve
 {
     m_Falling = true;
     m_Jumping = false;
-    m_StartFallZ = newmoveInfo->GetPos()->z;
+    m_StartFallZ = newmoveInfo->GetPos().z;
     m_StartVelocity = -verticalSpeed;
     m_InitialFallDiff = 0.f;
 
@@ -184,7 +184,7 @@ bool AntiCheat::isSwimming()
 
 bool AntiCheat::verifyTransportCoords(const MovementInfoPtr& moveInfo)
 {
-    return !(std::abs(moveInfo->GetTransportPos()->x) > 100 || std::abs(moveInfo->GetTransportPos()->y) > 100 || std::abs(moveInfo->GetTransportPos()->z) > 100);
+    return !(std::abs(moveInfo->GetTransportPos().x) > 100 || std::abs(moveInfo->GetTransportPos().y) > 100 || std::abs(moveInfo->GetTransportPos().z) > 100);
 }
 
 bool AntiCheat::verifyTransportCoords()
@@ -204,7 +204,7 @@ float AntiCheat::GetDistOrTransportDist(bool threed)
 
 float AntiCheat::GetDistanceZ()
 {
-    return newmoveInfo->GetPos()->z - oldmoveInfo->GetPos()->z;
+    return newmoveInfo->GetPos().z - oldmoveInfo->GetPos().z;
 }
 
 float AntiCheat::GetDistance()
@@ -227,16 +227,16 @@ float AntiCheat::GetDistance(bool threed)
 float AntiCheat::GetDistance2D()
 {
     return
-        sqrt(pow(newmoveInfo->GetPos()->x - oldmoveInfo->GetPos()->x, 2) +
-            pow(newmoveInfo->GetPos()->y - oldmoveInfo->GetPos()->y, 2));
+        sqrt(pow(newmoveInfo->GetPos().x - oldmoveInfo->GetPos().x, 2) +
+            pow(newmoveInfo->GetPos().y - oldmoveInfo->GetPos().y, 2));
 }
 
 float AntiCheat::GetDistance3D()
 {
     return
-        sqrt(pow(newmoveInfo->GetPos()->x - oldmoveInfo->GetPos()->x, 2) +
-            pow(newmoveInfo->GetPos()->y - oldmoveInfo->GetPos()->y, 2) +
-            pow(newmoveInfo->GetPos()->z - oldmoveInfo->GetPos()->z, 2));
+        sqrt(pow(newmoveInfo->GetPos().x - oldmoveInfo->GetPos().x, 2) +
+            pow(newmoveInfo->GetPos().y - oldmoveInfo->GetPos().y, 2) +
+            pow(newmoveInfo->GetPos().z - oldmoveInfo->GetPos().z, 2));
 }
 
 float AntiCheat::GetTransportDist()
@@ -252,21 +252,21 @@ float AntiCheat::GetTransportDist(bool threed)
 float AntiCheat::GetTransportDist2D()
 {
     return
-        sqrt(pow(newmoveInfo->GetTransportPos()->x - oldmoveInfo->GetTransportPos()->x, 2) +
-            pow(newmoveInfo->GetTransportPos()->y - oldmoveInfo->GetTransportPos()->y, 2));
+        sqrt(pow(newmoveInfo->GetTransportPos().x - oldmoveInfo->GetTransportPos().x, 2) +
+            pow(newmoveInfo->GetTransportPos().y - oldmoveInfo->GetTransportPos().y, 2));
 }
 
 float AntiCheat::GetTransportDist3D()
 {
     return
-        sqrt(pow(newmoveInfo->GetTransportPos()->x - oldmoveInfo->GetTransportPos()->x, 2) +
-            pow(newmoveInfo->GetTransportPos()->y - oldmoveInfo->GetTransportPos()->y, 2) +
-            pow(newmoveInfo->GetTransportPos()->z - oldmoveInfo->GetTransportPos()->z, 2));
+        sqrt(pow(newmoveInfo->GetTransportPos().x - oldmoveInfo->GetTransportPos().x, 2) +
+            pow(newmoveInfo->GetTransportPos().y - oldmoveInfo->GetTransportPos().y, 2) +
+            pow(newmoveInfo->GetTransportPos().z - oldmoveInfo->GetTransportPos().z, 2));
 }
 
 float AntiCheat::GetTransportDistZ()
 {
-    return newmoveInfo->GetTransportPos()->z - oldmoveInfo->GetTransportPos()->z;
+    return newmoveInfo->GetTransportPos().z - oldmoveInfo->GetTransportPos().z;
 }
 
 float AntiCheat::GetServerSpeed(bool includeold)
@@ -300,7 +300,7 @@ float AntiCheat::GetExpectedZ()
 float AntiCheat::GetExpectedZ(uint32 falltime)
 {
     if (!m_Falling)
-        return newmoveInfo->GetPos()->z;
+        return newmoveInfo->GetPos().z;
 
     return m_StartFallZ - ComputeFallElevation(falltime / 1000.f, m_SlowFall, m_StartVelocity) + m_InitialFallDiff;
 }
@@ -312,8 +312,8 @@ float AntiCheat::GetAllowedDistance()
 
 uint32 AntiCheat::GetDiff()
 {
-    uint32 t1 = newmoveInfo->GetACTime();
-    uint32 t2 = oldmoveInfo->GetACTime();
+    uint32 t1 = newmoveInfo->acTime;
+    uint32 t2 = oldmoveInfo->acTime;
 
     return std::max(uint32(1), std::max(t1, t2) - std::min(t1, t2));
 }
@@ -361,17 +361,17 @@ void AntiCheat::UpdateGravityInfo(Opcodes opcode)
     // Start falling by jumping
     if (opcode == MSG_MOVE_JUMP)
     {
-        m_StartFallZ = newmoveInfo->GetPos()->z;
+        m_StartFallZ = newmoveInfo->GetPos().z;
         m_Jumping = true;
         m_Falling = true;
-        m_StartVelocity = newmoveInfo->GetJumpInfo().velocity;
+        m_StartVelocity = newmoveInfo->jump.velocity;
     }
     // Start falling by walking off a cliff
     else if (!m_Falling && isFalling(newmoveInfo))
     {
         m_Falling = true;
         m_StartVelocity = 0.f;
-        m_StartFallZ = std::max(oldmoveInfo->GetPos()->z, newmoveInfo->GetPos()->z);
+        m_StartFallZ = std::max(oldmoveInfo->GetPos().z, newmoveInfo->GetPos().z);
     }
     // Landing
     else if (opcode == MSG_MOVE_FALL_LAND || opcode == MSG_MOVE_START_SWIM || !isFalling(newmoveInfo))
@@ -383,7 +383,7 @@ void AntiCheat::UpdateGravityInfo(Opcodes opcode)
         m_InitialFallDiff = 0.f;
     }
 
-    auto falldiff = newmoveInfo->GetPos()->z - GetExpectedZ(newmoveInfo->GetFallTime());
+    auto falldiff = newmoveInfo->GetPos().z - GetExpectedZ(newmoveInfo->GetFallTime());
 
     if (m_InitialFallDiff == 0.f && falldiff != 0.f)
         m_InitialFallDiff = falldiff;

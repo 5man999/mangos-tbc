@@ -848,6 +848,7 @@ class MovementInfo
         uint8    moveFlags2;
         uint32   ctime;     // client time
         uint32   stime;     // server time
+        uint32   acTime;    // anticheat time
         Position pos;
         // transport
         ObjectGuid t_guid;
@@ -861,6 +862,8 @@ class MovementInfo
         float    u_unk1;
 };
 
+typedef std::shared_ptr<MovementInfo> MovementInfoPtr;
+
 inline ByteBuffer& operator<< (ByteBuffer& buf, MovementInfo const& mi)
 {
     mi.Write(buf);
@@ -870,6 +873,18 @@ inline ByteBuffer& operator<< (ByteBuffer& buf, MovementInfo const& mi)
 inline ByteBuffer& operator>> (ByteBuffer& buf, MovementInfo& mi)
 {
     mi.Read(buf);
+    return buf;
+}
+
+inline ByteBuffer& operator<< (ByteBuffer& buf, MovementInfoPtr const& mi)
+{
+    mi->Write(buf);
+    return buf;
+}
+
+inline ByteBuffer& operator>> (ByteBuffer& buf, MovementInfoPtr& mi)
+{
+    mi->Read(buf);
     return buf;
 }
 
@@ -900,7 +915,7 @@ class WorldObject : public Object
         
         void GetPosition(WorldLocation& loc) const
         { loc.mapid = m_mapId; GetPosition(loc.coord_x, loc.coord_y, loc.coord_z); loc.orientation = GetOrientation(); }
-        Position const& GetPosition(GenericTransport* transport = nullptr) const { if (transport) return m_movementInfo.GetTransportPos(); return m_position; }
+        Position const& GetPosition(GenericTransport* transport = nullptr) const { if (transport) return m_movementInfo->GetTransportPos(); return m_position; }
         float GetOrientation() const { return m_position.o; }
 
         /// Gives a 2d-point in distance distance2d in direction absAngle around the current position (point-to-point)
@@ -1149,7 +1164,7 @@ class WorldObject : public Object
         void SetTransport(GenericTransport* t) { m_transport = t; }
 
         // only needed for unit+ but put here due to hiding and wotlk
-        MovementInfo m_movementInfo;
+        MovementInfoPtr m_movementInfo;
         GenericTransport* m_transport;
 
     protected:

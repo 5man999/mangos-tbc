@@ -19,7 +19,7 @@ bool AntiCheat_gravity::HandleMovement(const MovementInfoPtr& MoveInfo, Opcodes 
     if (CanFly())
         return SetOldMoveInfo();
 
-    auto diff = newmoveInfo->GetPos()->z - GetExpectedZ(newmoveInfo->GetFallTime());
+    auto diff = newmoveInfo->GetPos().z - GetExpectedZ(newmoveInfo->GetFallTime());
 
     if (!isFalling())
         SetStoredMoveInfo();
@@ -32,7 +32,7 @@ bool AntiCheat_gravity::HandleMovement(const MovementInfoPtr& MoveInfo, Opcodes 
         {
             m_Player->BoxChat << "Gravity hack" << "\n";
             m_Player->BoxChat << std::fixed << "diff:" << diff << std::endl;
-            m_Player->BoxChat << "currentz: " << newmoveInfo->GetPos()->z << std::endl;
+            m_Player->BoxChat << "currentz: " << newmoveInfo->GetPos().z << std::endl;
             m_Player->BoxChat << "expectedz: " << GetExpectedZ(newmoveInfo->GetFallTime()) << std::endl;
             m_Player->BoxChat << "velocityZ: " << GetDistanceZ() / GetDiffInSec() << std::endl;
             m_Player->BoxChat << "falltime: " << newmoveInfo->GetFallTime() << std::endl;

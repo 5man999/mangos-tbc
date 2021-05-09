@@ -1154,7 +1154,7 @@ void WorldSession::SendPlaySpellVisual(ObjectGuid guid, uint32 spellArtKit) cons
     SendPacket(data);
 }
 
-void WorldSession::SynchronizeMovement(MovementInfoPtr movementInfo)
+void WorldSession::SynchronizeMovement(const MovementInfoPtr& movementInfo)
 {
     int64 movementTime = (int64)movementInfo->ctime + m_timeSyncClockDelta;
     if (m_timeSyncClockDelta == 0 || movementTime < 0 || movementTime > 0xFFFFFFFF)

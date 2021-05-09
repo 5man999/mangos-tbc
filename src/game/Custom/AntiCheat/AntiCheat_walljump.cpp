@@ -53,7 +53,7 @@ bool AntiCheat_walljump::HandleMovement(const MovementInfoPtr& MoveInfo, Opcodes
         return SetOldMoveInfo(triggeredcheats.any());
     }
 
-    if (storedmoveInfo->GetPos()->z > newmoveInfo->GetPos()->z)
+    if (storedmoveInfo->GetPos().z > newmoveInfo->GetPos().z)
         AboveAngleCount = 0;
 
     return triggeredcheats.any();

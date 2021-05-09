@@ -68,7 +68,7 @@ public:
     // Misc
 public:
     bool AddAura(uint32 spellid);
-    bool TeleportToPos(uint32 mapid, const Position* pos, uint32 options = 0, AreaTrigger const* at = nullptr);
+    bool TeleportToPos(uint32 mapid, const Position& pos, uint32 options = 0, AreaTrigger const* at = nullptr);
     void AutoLearnSpells();
     void OnLogin();
     std::string GetNameLink(bool applycolors = false);

@@ -58,7 +58,6 @@ class CharacterHandler;
 class GMTicket;
 class MovementInfo;
 class WorldSession;
-typedef std::shared_ptr<MovementInfo> MovementInfoPtr;
 
 struct OpcodeHandler;
 

@@ -115,7 +115,7 @@ void WorldSession::HandleMoveWorldportAckOpcode()
     if (GetPlayer()->m_teleportTransport)
     {
         found = false;
-        GetPlayer()->m_movementInfo.t_pos = Position(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation); // when teleporting onto transport, position is local coords
+        GetPlayer()->m_movementInfo->t_pos = Position(loc.coord_x, loc.coord_y, loc.coord_z, loc.orientation); // when teleporting onto transport, position is local coords
         if (GenericTransport* transport = map->GetTransport(GetPlayer()->m_teleportTransport))
             if (transport->GetMapId() == loc.mapid)
                 found = true;
@@ -563,7 +563,7 @@ bool WorldSession::VerifyMovementInfo(const MovementInfoPtr& movementInfo) const
     {
         // transports size limited
         // (also received at zeppelin/lift leave by some reason with t_* as absolute in continent coordinates, can be safely skipped)
-        if (movementInfo->GetTransportPos().x > 50 || movementInfo->GetTransportPos().y > 50 || movementInfo-?GetTransportPos().z > 100)
+        if (movementInfo->GetTransportPos().x > 50 || movementInfo->GetTransportPos().y > 50 || movementInfo->GetTransportPos().z > 100)
             return false;
 
         if (!MaNGOS::IsValidMapCoord(movementInfo->GetPos().x + movementInfo->GetTransportPos().x, movementInfo->GetPos().y + movementInfo->GetTransportPos().y,
@@ -588,7 +588,7 @@ void WorldSession::HandleMoverRelocation(const MovementInfoPtr& movementInfo)
         if (plMover->m_movementInfo->HasMovementFlag(MOVEFLAG_ONTRANSPORT))
         {
             if (!plMover->m_transport)
-                if (GenericTransport* transport = plMover->GetMap()->GetTransport(movementInfo.GetTransportGuid()))
+                if (GenericTransport* transport = plMover->GetMap()->GetTransport(movementInfo->GetTransportGuid()))
                     transport->AddPassenger(plMover);
         }
         else if (plMover->m_transport)               // if we were on a transport, leave
@@ -598,9 +598,9 @@ void WorldSession::HandleMoverRelocation(const MovementInfoPtr& movementInfo)
             plMover->m_movementInfo->ClearTransportData();
         }
 
-        plMover->SetPosition(movementInfo.GetPos().x, movementInfo.GetPos().y, movementInfo.GetPos().z, movementInfo.GetPos().o);
+        plMover->SetPosition(movementInfo->pos.x, movementInfo->pos.y, movementInfo->pos.z, movementInfo->pos.o);
 
-        if (movementInfo->GetPos()->z < -500.0f)
+        if (movementInfo->pos.z < -500.0f)
         {
             // make sure the background didnt already handle this
             if (!(plMover->GetBattleGround() && plMover->GetBattleGround()->HandlePlayerUnderMap(_player)))
@@ -649,8 +649,8 @@ void WorldSession::HandleMoveTimeSkippedOpcode(WorldPacket& recv_data)
     if (mover == nullptr || guid != mover->GetObjectGuid())
         return;
 
-    mover->m_movementInfo.stime += timeSkipped;
-    mover->m_movementInfo.ctime += timeSkipped;
+    mover->m_movementInfo->stime += timeSkipped;
+    mover->m_movementInfo->ctime += timeSkipped;
 
     // Send to other players
     WorldPacket data(MSG_MOVE_TIME_SKIPPED, 16);

@@ -97,7 +97,7 @@ protected:
 
     bool IsKnockedback() { return m_Knockback; }
     float GetKnockBackSpeed() { return m_KnockbackSpeed; }
-    float GetFallDistance() { return m_StartFallZ - newmoveInfo->GetPos()->z; }
+    float GetFallDistance() { return m_StartFallZ - newmoveInfo->GetPos().z; }
 
 protected:
     CPlayer* m_Player;

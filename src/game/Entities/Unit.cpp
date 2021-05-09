@@ -667,7 +667,6 @@ bool Unit::UpdateMeleeAttackingState()
 
 void Unit::SendHeartBeat()
 {
-    m_movementInfo->UpdateTime(GetMap()->GetCurrentMSTime());
     WorldPacket data(MSG_MOVE_HEARTBEAT, 64);
     data << GetPackGUID();
     data << m_movementInfo;
@@ -941,8 +940,8 @@ uint32 Unit::DealDamage(Unit* dealer, Unit* victim, uint32 damage, CleanDamage c
     else                                                    // if (health <= damage)
         HandleDamageDealt(dealer, victim, damage, cleanDamage, damagetype, damageSchoolMask, spellProto, duel_hasEnded);
 
-    if (health <= damage && cplayervictim)
-        cplayervictim->HandlePvPKill();
+    if (health <= damage && victim->ToCPlayer())
+        victim->ToCPlayer()->HandlePvPKill();
 
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamageEnd returned %d damage", damage);
 
@@ -11375,7 +11374,7 @@ void Unit::UpdateSplinePosition(bool relocateOnly)
     Position pos(computedLoc.x, computedLoc.y, computedLoc.z, computedLoc.orientation);
     if (GenericTransport* transport = GetTransport())
     {
-        m_movementInfo.UpdateTransportData(pos);
+        m_movementInfo->UpdateTransportData(pos);
         transport->CalculatePassengerPosition(pos.x, pos.y, pos.z, &pos.o);
     }
 
